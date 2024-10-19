@@ -24,24 +24,24 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "ecdh_Ed25519.h"
+#include "ecdh_ZZZ.h"
 
-using namespace B256_56;
-using namespace F25519;
+using namespace XXX;
+using namespace YYY;
 
-#if CURVETYPE_Ed25519!=WEIERSTRASS
+#if CURVETYPE_ZZZ!=WEIERSTRASS
 // Process a random BIG r by RFC7748 (for Montgomery & Edwards curves only)
 static void RFC7748(BIG r)
 {
     int c,lg=0;
     BIG t;
-    c=Ed25519::CURVE_Cof_I;
+    c=ZZZ::CURVE_Cof_I;
     while (c!=1)
     {
         lg++;
         c/=2;
     }
-    int n=8*EGS_Ed25519-lg+1;
+    int n=8*EGS_ZZZ-lg+1;
     BIG_mod2m(r,n);
     BIG_zero(t); BIG_inc(t,1); BIG_shl(t,n);
     BIG_add(r,r,t);
@@ -52,7 +52,7 @@ static void RFC7748(BIG r)
 #endif
 
 /* return 1 if S is in ranger 0 < S < order , else return 0 */
-int Ed25519::ECP_IN_RANGE(octet* S)
+int ZZZ::ECP_IN_RANGE(octet* S)
 {
     BIG r,s;
     BIG_rcopy(r, CURVE_Order);
@@ -67,7 +67,7 @@ int Ed25519::ECP_IN_RANGE(octet* S)
  * and G is fixed generator.
  * If RNG is NULL then the private key is provided externally in S
  * otherwise it is generated randomly internally */
-int Ed25519::ECP_KEY_PAIR_GENERATE(csprng *RNG, octet* S, octet *W)
+int ZZZ::ECP_KEY_PAIR_GENERATE(csprng *RNG, octet* S, octet *W)
 {
     BIG r, gx, gy, s;
     ECP G;
@@ -78,7 +78,7 @@ int Ed25519::ECP_KEY_PAIR_GENERATE(csprng *RNG, octet* S, octet *W)
 
     if (RNG != NULL)
     {
-#if CURVETYPE_Ed25519!=WEIERSTRASS
+#if CURVETYPE_ZZZ!=WEIERSTRASS
         BIG_random(s,RNG);          // from random bytes
 #else
         BIG_randomnum(s, r, RNG);   // Removes biases
@@ -89,10 +89,10 @@ int Ed25519::ECP_KEY_PAIR_GENERATE(csprng *RNG, octet* S, octet *W)
         BIG_fromBytes(s, S->val);
     }
 
-#if CURVETYPE_Ed25519!=WEIERSTRASS
+#if CURVETYPE_ZZZ!=WEIERSTRASS
     RFC7748(s);                     // For Montgomery or Edwards, apply RFC7748 transformation
 #endif
-    S->len = EGS_Ed25519;
+    S->len = EGS_ZZZ;
     BIG_toBytes(S->val, s);
 
     ECP_clmul(&G, s, r);
@@ -102,7 +102,7 @@ int Ed25519::ECP_KEY_PAIR_GENERATE(csprng *RNG, octet* S, octet *W)
 }
 
 /* Validate public key */
-int Ed25519::ECP_PUBLIC_KEY_VALIDATE(octet *W)
+int ZZZ::ECP_PUBLIC_KEY_VALIDATE(octet *W)
 {
     BIG q, r, wx, k;
     ECP WP;
@@ -140,7 +140,7 @@ int Ed25519::ECP_PUBLIC_KEY_VALIDATE(octet *W)
 // type = 0 is just x coordinate output
 // type = 1 for standard compressed output
 // type = 2 for standard uncompress output 04|x|y
-int Ed25519::ECP_SVDP_DH(octet *S, octet *WD, octet *Z,int type)
+int ZZZ::ECP_SVDP_DH(octet *S, octet *WD, octet *Z,int type)
 {
     BIG r, s, wx;
     int valid;
@@ -158,7 +158,7 @@ int Ed25519::ECP_SVDP_DH(octet *S, octet *WD, octet *Z,int type)
         if (ECP_isinf(&W)) res = ECDH_ERROR;
         else
         {
-#if CURVETYPE_Ed25519!=MONTGOMERY
+#if CURVETYPE_ZZZ!=MONTGOMERY
             if (type>0)
             {
                 if (type==1) ECP_toOctet(Z,&W,true);
@@ -171,16 +171,16 @@ int Ed25519::ECP_SVDP_DH(octet *S, octet *WD, octet *Z,int type)
             ECP_get(wx, &W);
 #endif
         }
-        Z->len = EFS_Ed25519;
+        Z->len = EFS_ZZZ;
         BIG_toBytes(Z->val, wx);
     }
     return res;
 }
 
-#if CURVETYPE_Ed25519!=MONTGOMERY
+#if CURVETYPE_ZZZ!=MONTGOMERY
 
 /* IEEE ECDSA Signature, C and D are signature on F using private key S */
-int Ed25519::ECP_SP_DSA(int hlen, csprng *RNG, octet *K, octet *S, octet *F, octet *C, octet *D)
+int ZZZ::ECP_SP_DSA(int hlen, csprng *RNG, octet *K, octet *S, octet *F, octet *C, octet *D)
 {
     char h[128];
     octet H = {0, sizeof(h), h};
@@ -196,7 +196,7 @@ int Ed25519::ECP_SP_DSA(int hlen, csprng *RNG, octet *K, octet *S, octet *F, oct
     BIG_fromBytes(s, S->val);
 
     int blen = H.len;
-    if (H.len > EGS_Ed25519) blen = EGS_Ed25519;
+    if (H.len > EGS_ZZZ) blen = EGS_ZZZ;
     BIG_fromBytesLen(f, H.val, blen);
 
     if (RNG != NULL)
@@ -248,7 +248,7 @@ int Ed25519::ECP_SP_DSA(int hlen, csprng *RNG, octet *K, octet *S, octet *F, oct
         if (BIG_iszilch(d)) return ECDH_ERROR;
     }
 
-    C->len = D->len = EGS_Ed25519;
+    C->len = D->len = EGS_ZZZ;
 
     BIG_toBytes(C->val, c);
     BIG_toBytes(D->val, d);
@@ -257,7 +257,7 @@ int Ed25519::ECP_SP_DSA(int hlen, csprng *RNG, octet *K, octet *S, octet *F, oct
 }
 
 /* IEEE1363 ECDSA Signature Verification. Signature C and D on F is verified using public key W */
-int Ed25519::ECP_VP_DSA(int hlen, octet *W, octet *F, octet *C, octet *D)
+int ZZZ::ECP_VP_DSA(int hlen, octet *W, octet *F, octet *C, octet *D)
 {
     char h[128];
     octet H = {0, sizeof(h), h};
@@ -276,7 +276,7 @@ int Ed25519::ECP_VP_DSA(int hlen, octet *W, octet *F, octet *C, octet *D)
     BIG_fromBytes(d, D->val);
 
     int blen = H.len;
-    if (blen > EGS_Ed25519) blen = EGS_Ed25519;
+    if (blen > EGS_ZZZ) blen = EGS_ZZZ;
 
     BIG_fromBytesLen(f, H.val, blen);
 
@@ -308,11 +308,11 @@ int Ed25519::ECP_VP_DSA(int hlen, octet *W, octet *F, octet *C, octet *D)
 }
 
 /* IEEE1363 ECIES encryption. Encryption of plaintext M uses public key W and produces ciphertext V,C,T */
-void Ed25519::ECP_ECIES_ENCRYPT(int hlen, octet *P1, octet *P2, csprng *RNG, octet *W, octet *M, int tlen, octet *V, octet *C, octet *T)
+void ZZZ::ECP_ECIES_ENCRYPT(int hlen, octet *P1, octet *P2, csprng *RNG, octet *W, octet *M, int tlen, octet *V, octet *C, octet *T)
 {
 
     int i, len;
-    char z[EFS_Ed25519], vz[3 * EFS_Ed25519 + 1], k[2 * AESKEY_Ed25519], k1[AESKEY_Ed25519], k2[AESKEY_Ed25519], l2[8], u[EFS_Ed25519];
+    char z[EFS_ZZZ], vz[3 * EFS_ZZZ + 1], k[2 * AESKEY_ZZZ], k1[AESKEY_ZZZ], k2[AESKEY_ZZZ], l2[8], u[EFS_ZZZ];
     octet Z = {0, sizeof(z), z};
     octet VZ = {0, sizeof(vz), vz};
     octet K = {0, sizeof(k), k};
@@ -327,13 +327,13 @@ void Ed25519::ECP_ECIES_ENCRYPT(int hlen, octet *P1, octet *P2, csprng *RNG, oct
     OCT_copy(&VZ, V);
     OCT_joctet(&VZ, &Z);
 
-    KDF2(MC_SHA2, hlen, &K, 2 * AESKEY_Ed25519, &VZ, P1);
+    KDF2(MC_SHA2, hlen, &K, 2 * AESKEY_ZZZ, &VZ, P1);
 
-    K1.len = K2.len = AESKEY_Ed25519;
-    for (i = 0; i < AESKEY_Ed25519; i++)
+    K1.len = K2.len = AESKEY_ZZZ;
+    for (i = 0; i < AESKEY_ZZZ; i++)
     {
         K1.val[i] = K.val[i];
-        K2.val[i] = K.val[AESKEY_Ed25519 + i];
+        K2.val[i] = K.val[AESKEY_ZZZ + i];
     }
 
     AES_CBC_IV0_ENCRYPT(&K1, M, C);
@@ -348,11 +348,11 @@ void Ed25519::ECP_ECIES_ENCRYPT(int hlen, octet *P1, octet *P2, csprng *RNG, oct
 }
 
 /* IEEE1363 ECIES decryption. Decryption of ciphertext V,C,T using private key U outputs plaintext M */
-int Ed25519::ECP_ECIES_DECRYPT(int hlen, octet *P1, octet *P2, octet *V, octet *C, octet *T, octet *U, octet *M)
+int ZZZ::ECP_ECIES_DECRYPT(int hlen, octet *P1, octet *P2, octet *V, octet *C, octet *T, octet *U, octet *M)
 {
 
     int i, len;
-    char z[EFS_Ed25519], vz[3 * EFS_Ed25519 + 1], k[2 * AESKEY_Ed25519], k1[AESKEY_Ed25519], k2[AESKEY_Ed25519], l2[8], tag[32];
+    char z[EFS_ZZZ], vz[3 * EFS_ZZZ + 1], k[2 * AESKEY_ZZZ], k1[AESKEY_ZZZ], k2[AESKEY_ZZZ], l2[8], tag[32];
     octet Z = {0, sizeof(z), z};
     octet VZ = {0, sizeof(vz), vz};
     octet K = {0, sizeof(k), k};
@@ -366,13 +366,13 @@ int Ed25519::ECP_ECIES_DECRYPT(int hlen, octet *P1, octet *P2, octet *V, octet *
     OCT_copy(&VZ, V);
     OCT_joctet(&VZ, &Z);
 
-    KDF2(MC_SHA2, hlen, &K, 2 * AESKEY_Ed25519, &VZ, P1);
+    KDF2(MC_SHA2, hlen, &K, 2 * AESKEY_ZZZ, &VZ, P1);
 
-    K1.len = K2.len = AESKEY_Ed25519;
-    for (i = 0; i < AESKEY_Ed25519; i++)
+    K1.len = K2.len = AESKEY_ZZZ;
+    for (i = 0; i < AESKEY_ZZZ; i++)
     {
         K1.val[i] = K.val[i];
-        K2.val[i] = K.val[AESKEY_Ed25519 + i];
+        K2.val[i] = K.val[AESKEY_ZZZ + i];
     }
 
     if (!AES_CBC_IV0_DECRYPT(&K1, C, M)) return 0;
