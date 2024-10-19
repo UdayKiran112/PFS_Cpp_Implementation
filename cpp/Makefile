@@ -1,39 +1,20 @@
-# Compiler
+# Compiler and Flags
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -I$(SRC_DIR)/Lib -I$(SRC_DIR)
+CXXFLAGS = -std=c++17 -Wall -g -O0 -fno-omit-frame-pointer -I$(SRC_DIR)/Lib -I$(SRC_DIR)
 
 # Directories
 SRC_DIR = .
 OBJ_DIR = obj
 BIN_DIR = bin
-
-# MIRACL Core Library Source Files
-MIRACL_SRCS = $(SRC_DIR)/Lib/big.cpp \
-              $(SRC_DIR)/Lib/ecp.cpp \
-              $(SRC_DIR)/Lib/ecdh.cpp \
-              $(SRC_DIR)/Lib/eddsa.cpp \
-              $(SRC_DIR)/Lib/oct.cpp \
-              $(SRC_DIR)/Lib/fp.cpp \
-              $(SRC_DIR)/Lib/hash.cpp \
-              $(SRC_DIR)/Lib/rand.cpp \
-              $(SRC_DIR)/Lib/aes.cpp \
-              $(SRC_DIR)/Lib/hmac.cpp \
-              $(SRC_DIR)/Lib/rom_curve_Ed25519.cpp \
-              $(SRC_DIR)/Lib/rom_field_F25519.cpp \
-              $(SRC_DIR)/Lib/randapi.cpp
+LIB_DIR = Lib
 
 # Project Source Files
-SRCS = $(SRC_DIR)/main.cpp \
-       $(SRC_DIR)/Key.cpp \
-       $(SRC_DIR)/TA.cpp \
-       $(SRC_DIR)/Vehicle.cpp \
-       $(SRC_DIR)/Message.cpp
+SRCS = main.cpp Key.cpp TA.cpp Vehicle.cpp Message.cpp
+OBJS = $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
+LIBS = $(LIB_DIR)/core.a
 
-# All source files (project + MIRACL)
-ALL_SRCS = $(SRCS) $(MIRACL_SRCS)
-
-# Object files
-OBJS = $(ALL_SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+# Executable
+TARGET = $(BIN_DIR)/app
 
 # Detect Operating System
 ifeq ($(OS),Windows_NT)
@@ -55,36 +36,27 @@ else
     SLASH := /
 endif
 
-# Create directories if they do not exist
-$(shell $(call MKDIR_CMD,$(OBJ_DIR)/Lib))
-$(shell $(call MKDIR_CMD,$(BIN_DIR)))
+# Rules
+all: $(OBJ_DIR) $(BIN_DIR) $(TARGET)
 
-# Enable debug mode
-ifeq ($(DEBUG),1)
-    CXXFLAGS += -g -O0
-else
-    CXXFLAGS += -O2
-endif
-
-# Default target
-all: $(TARGET)
-
-# Link the object files to create the executable
+# Link the object files and core.a to create the executable
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 
-# Compile project source files to object files (with warnings)
+# Compile the source files into object files and place them in the OBJ_DIR
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@$(call MKDIR_CMD,$(dir $@))
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compile MIRACL Core Library source files to object files (suppress warnings)
-$(OBJ_DIR)/Lib/%.o: $(SRC_DIR)/Lib/%.cpp
-	@$(call MKDIR_CMD,$(dir $@))
-	$(CXX) $(CXXFLAGS) -w -c $< -o $@
+# Create the object and binary directories if they don't exist
+$(OBJ_DIR):
+	$(call MKDIR_CMD,$(OBJ_DIR))
 
-# Clean object files and executable
+$(BIN_DIR):
+	$(call MKDIR_CMD,$(BIN_DIR))
+
+# Clean up object files and the executable
 clean:
-	$(DEL_CMD) $(OBJ_DIR)$(SLASH)*.o $(OBJ_DIR)$(SLASH)Lib$(SLASH)*.o $(TARGET)
+	$(DEL_CMD) $(OBJ_DIR)$(SLASH)*.o $(TARGET)
 
 .PHONY: all clean
