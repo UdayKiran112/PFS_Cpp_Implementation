@@ -62,33 +62,33 @@ void core::GPhash(int hash,int hlen,octet *w,int olen,int pad,octet *p,int n,oct
         case SHA256 :
             HASH256_init(&sh256);
             for (i=0;i<pad;i++) HASH256_process(&sh256,0);
-            if (p!=nullptr)
+            if (p!=NULL)
                 for (i=0;i<p->len;i++) HASH256_process(&sh256,p->val[i]);
             if (n>=0)
                 for (i=0;i<4;i++) HASH256_process(&sh256,c[i]);
-            if (x!=nullptr)
+            if (x!=NULL)
                 for (i=0;i<x->len;i++) HASH256_process(&sh256,x->val[i]);
             HASH256_hash(&sh256,hh);
             break;
         case SHA384 :
             HASH384_init(&sh384);
             for (i=0;i<pad;i++) HASH384_process(&sh384,0);
-            if (p!=nullptr)
+            if (p!=NULL)
                 for (i=0;i<p->len;i++) HASH384_process(&sh384,p->val[i]);
             if (n>=0)
                 for (i=0;i<4;i++) HASH384_process(&sh384,c[i]);
-            if (x!=nullptr)
+            if (x!=NULL)
                 for (i=0;i<x->len;i++) HASH384_process(&sh384,x->val[i]);
             HASH384_hash(&sh384,hh);
             break;
         case SHA512 :
             HASH512_init(&sh512);
             for (i=0;i<pad;i++) HASH512_process(&sh512,0);
-            if (p!=nullptr)
+            if (p!=NULL)
                 for (i=0;i<p->len;i++) HASH512_process(&sh512,p->val[i]);
             if (n>=0)
                 for (i=0;i<4;i++) HASH512_process(&sh512,c[i]);
-            if (x!=nullptr)
+            if (x!=NULL)
                 for (i=0;i<x->len;i++) HASH512_process(&sh512,x->val[i]);
             HASH512_hash(&sh512,hh);   
             break;
@@ -97,11 +97,11 @@ void core::GPhash(int hash,int hlen,octet *w,int olen,int pad,octet *p,int n,oct
     case MC_SHA3 :
         SHA3_init(&sh3,hlen);
         for (i=0;i<pad;i++) SHA3_process(&sh3,0);
-        if (p!=nullptr)
+        if (p!=NULL)
             for (i=0;p->len;i++) SHA3_process(&sh3,p->val[i]);
         if (n>=0)
             for (i=0;i<4;i++) SHA3_process(&sh3,c[i]);
-        if (x!=nullptr)
+        if (x!=NULL)
             for (i=0;x->len;i++) SHA3_process(&sh3,x->val[i]);
         SHA3_hash(&sh3,hh);  
         break;
@@ -125,7 +125,7 @@ void core::GPhash(int hash,int hlen,octet *w,int olen,int pad,octet *p,int n,oct
 /* Simple hash octet p to octet w of length hlen */
 void core::SPhash(int hash, int hlen,octet *w, octet *p)
 {
-    GPhash(hash, hlen, w, 0, 0, p, -1, nullptr);
+    GPhash(hash, hlen, w, 0, 0, p, -1, NULL);
 }
 
 static int blksize(int hash,int hlen)
@@ -183,7 +183,7 @@ void core::HKDF_Extract(int hash,int hlen,octet *PRK,octet *SALT,octet *IKM)
 {
     char h[64];
     octet H={0,sizeof(h),h};
-    if (SALT==nullptr) {
+    if (SALT==NULL) {
         OCT_jbyte(&H,0,hlen);
         HMAC(hash,hlen,PRK,hlen,&H,IKM);
     } else {
@@ -341,7 +341,7 @@ void core::PBKDF2(int hash, int hlen, octet *key, int olen, octet *p, octet *s, 
         OCT_joctet(key, &F);
     }
 
-    OCT_chop(key, nullptr, olen);
+    OCT_chop(key, NULL, olen);
 }
 
 /* RSA Auxiliary Functions */
@@ -362,7 +362,7 @@ static void MGF1(int sha, octet *z, int olen, octet *mask)
     cthreshold = ROUNDUP(olen, hlen);
     for (counter = 0; counter < cthreshold; counter++)
     {
-        GPhash(MC_SHA2,sha,&H,0,0,z,counter,nullptr);
+        GPhash(MC_SHA2,sha,&H,0,0,z,counter,NULL);
         //hashit(sha, z, counter, &H);
         if (mask->len + hlen > olen) OCT_jbytes(mask, H.val, olen % hlen);
         else                     OCT_joctet(mask, &H);
@@ -382,7 +382,7 @@ static void MGF1XOR(int sha, octet *z, octet *w)
     cthreshold = ROUNDUP(w->len, hlen);
     for (counter = 0; counter < cthreshold; counter++)
     {
-        GPhash(MC_SHA2,sha,&H,0,0,z,counter,nullptr);
+        GPhash(MC_SHA2,sha,&H,0,0,z,counter,NULL);
         if (wlen+hlen <= w->len)
             len=hlen;
         else 
@@ -412,7 +412,7 @@ int core::PKCS15(int sha, octet *m, octet *w)
     octet H = {0, sizeof(h), h};
 
     if (olen < idlen + hlen + 10) return 0;
-    GPhash(MC_SHA2,sha,&H,0,0,m,-1,nullptr);
+    GPhash(MC_SHA2,sha,&H,0,0,m,-1,NULL);
 
     OCT_empty(w);
     OCT_jbyte(w, 0x00, 1);
@@ -429,7 +429,7 @@ int core::PKCS15(int sha, octet *m, octet *w)
     return 1;
 }
 
-/* Alternate form, without the nullptr 0500 */
+/* Alternate form, without the NULL 0500 */
 
 /* SHAXXX identifier strings */
 const unsigned char SHA256IDb[] = {0x30, 0x2f, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x20};
@@ -447,7 +447,7 @@ int core::PKCS15b(int sha, octet *m, octet *w)
     octet H = {0, sizeof(h), h};
 
     if (olen < idlen + hlen + 10) return 0;
-    GPhash(MC_SHA2,sha,&H,0,0,m,-1,nullptr);
+    GPhash(MC_SHA2,sha,&H,0,0,m,-1,NULL);
 
     OCT_empty(w);
     OCT_jbyte(w, 0x00, 1);
@@ -483,14 +483,14 @@ int core::PSS_ENCODE(int sha, octet *m, csprng *RNG, octet *w)
 
     mask=(0xff)>>(8*emlen-embits);
 
-    GPhash(MC_SHA2,sha,&H,0,0,m,-1,nullptr);
+    GPhash(MC_SHA2,sha,&H,0,0,m,-1,NULL);
     if (emlen < hlen + hlen +  2) return 0; 
 
     OCT_jbyte(&MD,0,8);
     OCT_joctet(&MD,&H);
     OCT_joctet(&MD,&SALT);
 
-    GPhash(MC_SHA2,sha,&H,0,0,&MD,-1,nullptr);
+    GPhash(MC_SHA2,sha,&H,0,0,&MD,-1,NULL);
     OCT_clear(w);
     OCT_jbyte(w,0,emlen-hlen-hlen-2);
     OCT_jbyte(w,0x01,1);
@@ -522,7 +522,7 @@ int core::PSS_VERIFY(int sha, octet *m,octet *w)
 
     mask=(0xff)>>(8*emlen-embits);
 
-    GPhash(MC_SHA2,sha,&HMASK,0,0,m,-1,nullptr);
+    GPhash(MC_SHA2,sha,&HMASK,0,0,m,-1,NULL);
     if (emlen < hlen + hlen +  2) return 0; 
     if (w->val[emlen-1]!=(char)0xbc) return 0;
     if ((w->val[0]&(~mask))!=0) return 0;
@@ -544,7 +544,7 @@ int core::PSS_VERIFY(int sha, octet *m,octet *w)
     OCT_jbyte(&DB,0,8);
     OCT_joctet(&DB,&HMASK);
     OCT_joctet(&DB,&SALT);
-    GPhash(MC_SHA2,sha,&HMASK,0,0,&DB,-1,nullptr);
+    GPhash(MC_SHA2,sha,&HMASK,0,0,&DB,-1,NULL);
 
     if (!OCT_ncomp(&H,&HMASK,H.len))
         return 0;
@@ -567,7 +567,7 @@ int core::OAEP_ENCODE(int sha, octet *m, csprng *RNG, octet *p, octet *f)
     if (mlen > olen - hlen - seedlen - 1) return 0;
     if (m == f) return 0; /* must be distinct octets */
 
-    GPhash(MC_SHA2,sha,f,0,0,p,-1,nullptr);
+    GPhash(MC_SHA2,sha,f,0,0,p,-1,NULL);
     //hashit(sha, p, -1, f);
 
     slen = olen - mlen - hlen - seedlen - 1;
@@ -610,7 +610,7 @@ int core::OAEP_DECODE(int sha, octet *p, octet *f)
     if (olen < seedlen + hlen + 1) return 0;
     if (!OCT_pad(f, olen + 1)) return 0;
 
-    GPhash(MC_SHA2,sha,&CHASH,0,0,p,-1,nullptr);
+    GPhash(MC_SHA2,sha,&CHASH,0,0,p,-1,NULL);
     //hashit(sha, p, -1, &CHASH);
 
     x = f->val[0];

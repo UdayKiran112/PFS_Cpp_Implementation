@@ -798,7 +798,7 @@ int F25519::FP_qr(FP *x,FP *h)
     FP r;
     int i,e=PM1D2_F25519;
     FP_progen(&r,x);
-    if (h!=nullptr)
+    if (h!=NULL)
         FP_copy(h,&r);
 
     FP_sqr(&r,&r);
@@ -817,7 +817,7 @@ void F25519::FP_inv(FP *r,FP *x,FP *h)
     FP_norm(x);
     FP_copy(&s,x);
 
-    if (h==nullptr)
+    if (h==NULL)
         FP_progen(&t,x);
     else
         FP_copy(&t,h);
@@ -841,7 +841,7 @@ void F25519::FP_sqrt(FP *r, FP *a, FP* h)
     FP v,g,t,b;
     BIG m;
 
-    if (h==nullptr)
+    if (h==NULL)
         FP_progen(&g,a);
     else
         FP_copy(&g,h);

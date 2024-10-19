@@ -69,7 +69,7 @@ static void reverse(int n, char *buff)
 // dom2 - context still needs to be appended
 static void dom2(bool ph, int cl, octet *DOM)
 {
-    OCT_jstring(DOM, (char *)"SigEd25519 no Ed25519 collisions");
+    OCT_jstring(DOM, (char *)"SigZZZ no ZZZ collisions");
     if (ph)
         OCT_jbyte(DOM, 1, 1);
     else
@@ -80,7 +80,7 @@ static void dom2(bool ph, int cl, octet *DOM)
 // dom4 - context still needs to be appended
 static void dom4(bool ph, int cl, octet *DOM)
 {
-    OCT_jstring(DOM, (char *)"SigEd25519");
+    OCT_jstring(DOM, (char *)"SigZZZ");
     if (ph)
         OCT_jbyte(DOM, 1, 1);
     else
@@ -90,7 +90,7 @@ static void dom4(bool ph, int cl, octet *DOM)
 
 static void H(octet *S, char *digest)
 {
-#if CURVE_SECURITY_Ed25519 <= 128 // for ed25519?
+#if CURVE_SECURITY_ZZZ <= 128 // for ed25519?
     hash512 sh512;
     HASH512_init(&sh512);
     for (int i = 0; i < S->len; i++)
@@ -112,11 +112,11 @@ static int H2(bool ph, octet *context, octet *R, octet *Q, octet *M, DBIG dr)
     char dom[64];
     octet DOM = {0, sizeof(dom), dom};
     int cl;
-    if (context == nullptr)
+    if (context == NULL)
         cl = 0;
     else
         cl = context->len & 0xff;
-#if CURVE_SECURITY_Ed25519 <= 128 // for ed25519?
+#if CURVE_SECURITY_ZZZ <= 128 // for ed25519?
     hash512 sh512;
     HASH512_init(&sh512);
     if (ph || cl > 0)
@@ -161,12 +161,12 @@ static void getR(bool ph, int b, char *digest, octet *context, octet *M, DBIG dr
     char dom[64];
     octet DOM = {0, sizeof(dom), dom};
     int cl;
-    if (context == nullptr)
+    if (context == NULL)
         cl = 0;
     else
         cl = context->len & 0xff;
 
-#if CURVE_SECURITY_Ed25519 <= 128 // for ed25519?
+#if CURVE_SECURITY_ZZZ <= 128 // for ed25519?
     hash512 sh512;
     HASH512_init(&sh512);
     if (ph || cl > 0)
@@ -274,7 +274,7 @@ static void decode(octet *W, Ed25519::ECP *P)
     FP_rcopy(&t, Ed25519::CURVE_B);
 
     FP_mul(&d, &d, &t);
-#if CURVE_A_Ed25519 == 1
+#if CURVE_A_ZZZ == 1
     FP_sub(&d, &d, &one);
 #else
     FP_add(&d, &d, &one);
@@ -307,7 +307,7 @@ static void decode(octet *W, Ed25519::ECP *P)
  * where D is the secret key and Q is the public key
  * and G is fixed generator.
  * RNG is a cryptographically strong RNG
- * If RNG==nullptr, D is generated externally
+ * If RNG==NULL, D is generated externally
  */
 int Ed25519::EDDSA_KEY_PAIR_GENERATE(csprng *RNG, octet *D, octet *Q)
 {
@@ -323,7 +323,7 @@ int Ed25519::EDDSA_KEY_PAIR_GENERATE(csprng *RNG, octet *D, octet *Q)
 
     ECP_generator(&G);
 
-    if (RNG != nullptr)
+    if (RNG != NULL)
         OCT_rand(D, RNG, b); // create random private key
 
     H(D, digest);
@@ -340,7 +340,7 @@ int Ed25519::EDDSA_KEY_PAIR_GENERATE(csprng *RNG, octet *D, octet *Q)
 
 // Generate a signature using key pair (D,Q) on message M
 // Set ph=true if message has already been pre-hashed
-// if ph=false, then context should be nullptr for ed25519. However RFC8032 mode ed25519ctx is supported by supplying a non-nullptr or non-empty context
+// if ph=false, then context should be NULL for ed25519. However RFC8032 mode ed25519ctx is supported by supplying a non-NULL or non-empty context
 int Ed25519::EDDSA_SIGNATURE(bool ph, octet *D, octet *context, octet *M, octet *SIG)
 {
     DBIG dr;
@@ -356,7 +356,7 @@ int Ed25519::EDDSA_SIGNATURE(bool ph, octet *D, octet *context, octet *M, octet 
         index = 1; // extra byte needed for compression
     b = MODBYTES_B256_56 + index;
 
-    EDDSA_KEY_PAIR_GENERATE(nullptr, D, &Q);
+    EDDSA_KEY_PAIR_GENERATE(NULL, D, &Q);
 
     BIG_rcopy(q, CURVE_Order);
     ECP_generator(&R);

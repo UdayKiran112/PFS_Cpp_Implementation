@@ -174,7 +174,7 @@ void core::OCT_joctet(octet *y, octet *x)
 {
     /* y=y || x */
     int i, j;
-    if (x == nullptr) return;
+    if (x == NULL) return;
 
     for (i = 0; i < x->len; i++)
     {
@@ -365,20 +365,20 @@ void core::OCT_xorbyte(octet *x, int m)
     for (i = 0; i < x->len; i++) x->val[i] ^= m;
 }
 
-/* truncates x to n bytes and places the rest in y (if y is not nullptr) */
+/* truncates x to n bytes and places the rest in y (if y is not NULL) */
 /* SU= 8 */
 void core::OCT_chop(octet *x, octet *y, int n)
 {
     int i;
     if (n >= x->len)
     {
-        if (y != nullptr) y->len = 0;
+        if (y != NULL) y->len = 0;
         return;
     }
-    if (y != nullptr) y->len = x->len - n;
+    if (y != NULL) y->len = x->len - n;
     x->len = n;
 
-    if (y != nullptr)
+    if (y != NULL)
     {
         for (i = 0; i < y->len && i < y->max; i++) y->val[i] = x->val[i + n];
     }

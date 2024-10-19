@@ -293,7 +293,7 @@ void core::AES_reset(core::aes *a, int mode, char *iv)
     a->mode = mode;
     for (i = 0; i < 4 * NB; i++)
         a->f[i] = 0;
-    if (mode != ECB && iv != nullptr)
+    if (mode != ECB && iv != NULL)
     {
         for (i = 0; i < 4 * NB; i++)
             a->f[i] = iv[i];
@@ -666,7 +666,7 @@ void core::AES_end(core::aes *a)
 /* AES encryption/decryption. Encrypt byte array M using key K and returns ciphertext */
 void core::AES_CBC_IV0_ENCRYPT(octet *k, octet *m, octet *c)
 {
-    /* AES CBC encryption, with nullptr IV and key k */
+    /* AES CBC encryption, with Null IV and key k */
     /* Input is from an octet string m, output is to an octet string c */
     /* Input is padded as necessary to make up a full final block */
     aes a;
@@ -677,7 +677,7 @@ void core::AES_CBC_IV0_ENCRYPT(octet *k, octet *m, octet *c)
 
     OCT_clear(c);
     if (m->len == 0) return;
-    AES_init(&a, CBC, k->len, k->val, nullptr);
+    AES_init(&a, CBC, k->len, k->val, NULL);
 
     ipt = opt = 0;
     fin = 0;
@@ -724,7 +724,7 @@ int core::AES_CBC_IV0_DECRYPT(octet *k, octet *c, octet *m)
     if (c->len == 0) return 1;
     ch = c->val[ipt++];
 
-    AES_init(&a, CBC, k->len, k->val, nullptr);
+    AES_init(&a, CBC, k->len, k->val, NULL);
     fin = 0;
 
     for (;;)

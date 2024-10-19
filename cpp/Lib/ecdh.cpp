@@ -65,7 +65,7 @@ int Ed25519::ECP_IN_RANGE(octet* S)
 /* Calculate a public/private EC GF(p) key pair. W=S.G mod EC(p),
  * where S is the secret key and W is the public key
  * and G is fixed generator.
- * If RNG is nullptr then the private key is provided externally in S
+ * If RNG is NULL then the private key is provided externally in S
  * otherwise it is generated randomly internally */
 int Ed25519::ECP_KEY_PAIR_GENERATE(csprng *RNG, octet* S, octet *W)
 {
@@ -76,7 +76,7 @@ int Ed25519::ECP_KEY_PAIR_GENERATE(csprng *RNG, octet* S, octet *W)
     ECP_generator(&G);
     BIG_rcopy(r, CURVE_Order);
 
-    if (RNG != nullptr)
+    if (RNG != NULL)
     {
 #if CURVETYPE_Ed25519!=WEIERSTRASS
         BIG_random(s,RNG);          // from random bytes
@@ -199,7 +199,7 @@ int Ed25519::ECP_SP_DSA(int hlen, csprng *RNG, octet *K, octet *S, octet *F, oct
     if (H.len > EGS_Ed25519) blen = EGS_Ed25519;
     BIG_fromBytesLen(f, H.val, blen);
 
-    if (RNG != nullptr)
+    if (RNG != NULL)
     {
         do
         {
