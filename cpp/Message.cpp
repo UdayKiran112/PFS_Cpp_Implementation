@@ -104,15 +104,29 @@ void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 
 void Message::add_octets(octet *data1, octet *data2, octet *result)
 {
-    BIG point1, point2;
+    BIG curve_order, point1, point2, sum;
+
+    // Initialize the BIG variables to zero.
+    BIG_zero(curve_order);
+    BIG_zero(point1);
+    BIG_zero(point2);
+    BIG_zero(sum);
+
+    // Copy the curve order.
+    BIG_rcopy(curve_order, CURVE_Order);
+
+    // Convert the byte arrays from the octets into BIG integers.
     BIG_fromBytes(point1, data1->val);
     BIG_fromBytes(point2, data2->val);
-    BIG sum;
-    BIG_add(sum, point1, point2);
-    result->len = 32;
-    result->max = 32;
-    result->val = new char[32];
+
+    // Perform modular addition: sum = (point1 + point2) % curve_order.
+    BIG_modadd(sum, point1, point2, curve_order);
+
+    // Convert the resulting BIG back into a byte array.
     BIG_toBytes(result->val, sum);
+
+    // Update the length of the result octet.
+    result->len = MODBYTES_B256_56; // Set this to the correct length of the output (typically MODBYTES).
 }
 
 void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, octet *result)
