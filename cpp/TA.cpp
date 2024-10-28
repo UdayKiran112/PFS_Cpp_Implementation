@@ -68,10 +68,8 @@ static bool signatureGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehi
     Key randomKey(RNG);
 
     // Ensure 'result' is properly initialized to handle the concatenation
-    octet result;
-    result.len = 0; // Start with an empty octet
-    result.max = vehiclePublicKey->len + randomKey.getPrivateKey().len;
-    result.val = new char[result.max];
+    char res[2*(2 * EFS_Ed25519 + 1)];
+    octet result={0,sizeof(res),res};
 
     // Concatenate vehicle public key and random private key
     auto publicKey = randomKey.getPublicKey();
@@ -79,18 +77,14 @@ static bool signatureGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehi
     Message::Concatenate_octet(vehiclePublicKey, &publicKey, &result);
 
     // Hash the concatenated result into a temporary hash result
-    octet hashResult;
-    hashResult.len = 0;
-    hashResult.max = 32; // Replace with the actual hash size
-    hashResult.val = new char[hashResult.max];
-    Message::Hash_Function(&result, &hashResult, 0);
+    char hres[HASH_TYPE_Ed25519];
+    octet hashResult={0,sizeof(hres),hres};
+    Message::Hash_Function(HASH_TYPE_Ed25519,&result, &hashResult);
 
     // Multiply the random private key by the hash result
     auto privateKey = randomKey.getPrivateKey();
-    octet product;
-    product.len = 0;
-    product.max = privateKey.len; // Assuming result fits into the size of the private key
-    product.val = new char[product.max];
+    char prod[EGS_Ed25519];
+    octet product={0,sizeof(prod),prod};
     Message::multiply_octet(&privateKey, &hashResult, &product);
 
     // Add the group private key to the multiplication result
@@ -100,6 +94,7 @@ static bool signatureGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehi
     delete[] result.val;
     delete[] hashResult.val;
     delete[] product.val;
+    delete[] publicKey.val;
 
     return true;
 }

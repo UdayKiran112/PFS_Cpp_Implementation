@@ -1,6 +1,6 @@
 # Compiler and Flags
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -g -O0 -fno-omit-frame-pointer -I$(SRC_DIR)/Lib -I$(SRC_DIR)
+CXXFLAGS = -std=c++17 -Wall -fsanitize=address -g -O0 -fno-omit-frame-pointer -I$(SRC_DIR)/Lib -I$(SRC_DIR)
 
 # Directories
 SRC_DIR = .

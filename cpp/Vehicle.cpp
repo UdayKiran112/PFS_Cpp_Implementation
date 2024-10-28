@@ -75,7 +75,9 @@ using namespace core;
 using namespace Ed25519;
 void Vehicle::requestVerification(csprng *RNG)
 {
-    octet signkey, virpubkey;
+    octet signkey;
+    char pub[2 * EFS_Ed25519 + 1];
+    octet virpubkey = {0, sizeof(pub), pub};
     octet publicKey = this->getVehicleKey().getPublicKey();
     auto temp = this->registrationId;
     this->ta.validateRequest(RNG, &temp, &publicKey, &signkey, &virpubkey);
@@ -128,7 +130,7 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message msg)
     octet msgB = msg.getB();
     Message::Concatenate_octet(&temp1, &msgB, &temp2);
 
-    Message::Hash_Function(&temp2, &hashMsg, 0);
+    Message::Hash_Function(HASH_TYPE_Ed25519,&temp2, &hashMsg);
 
     // Generate Signature --> signedMessage = SignatureKey + privateKey + randKey.getPrivateKey() * H(M || T || B)
     octet *result = new octet();
@@ -157,21 +159,21 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
 
     // Retrieve the timestamp from the message as a 4-byte octet
     core::octet timestamp_oct = msg.getTimestamp();
-    
+
     // Convert 4-byte octet to a 32-bit integer (milliseconds)
     uint32_t millis = 0;
-    unsigned char* ptr = (unsigned char*)timestamp_oct.val;
+    unsigned char *ptr = (unsigned char *)timestamp_oct.val;
     for (int i = 0; i < 4; i++)
     {
         millis <<= 8;
         millis |= ptr[i];
     }
-    
+
     // Convert milliseconds since epoch to chrono::system_clock::time_point
     chrono::system_clock::time_point receivedTimestamp = chrono::system_clock::time_point(chrono::milliseconds(millis));
-    
+
     auto now = chrono::system_clock::now();
-    
+
     // Check for replay attack by comparing timestamps
     if (chrono::duration_cast<chrono::milliseconds>(now - receivedTimestamp).count() > T_replay)
     {
@@ -188,35 +190,34 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     octet msgB = msg.getB();
     ECP_fromOctet(&Bpoint, &msgB);
 
-
     // generate new variables to ensure original parameters are not changed
-    
+
     ECP_copy(&P, GeneratorPoint); // P = Generator
 
-    // Compute LHS = σ(M) * P 
+    // Compute LHS = σ(M) * P
 
     BIG signedMessageHash;
     BIG_fromBytes(signedMessageHash, msg.getFinalMsg().val);
-    ECP_mul(&P, signedMessageHash); // P = σ(M) * P 
-    ECP_copy(&LHS, &P); // LHS =  P
+    ECP_mul(&P, signedMessageHash); // P = σ(M) * P
+    ECP_copy(&LHS, &P);             // LHS =  P
 
     // Compute RHS = GK + H(PKi || A) * A + PKi + H(M || T || B) * B
 
-    ECP_copy(&RHS, &SigKey); // RHS = GK
+    ECP_copy(&RHS, &SigKey);   // RHS = GK
     ECP_add(&RHS, &VehPubKey); // RHS = GK + PKi
 
-    octet* r1 = new octet(), *r2 = new octet(), *temp = new octet();
-    Message::Concatenate_octet(VehiclePublicKey,A,r1); // r1 = PKi || A --> Octet concatenation
+    octet *r1 = new octet(), *r2 = new octet(), *temp = new octet();
+    Message::Concatenate_octet(VehiclePublicKey, A, r1); // r1 = PKi || A --> Octet concatenation
 
     octet msgMessage = msg.getMessage();
     octet msgTimestamp = msg.getTimestamp();
     Message::Concatenate_octet(&msgMessage, &msgTimestamp, temp); // temp = M || T ||--> Octet concatenation
-    
+
     Message::Concatenate_octet(temp, &msgB, r2); // r2 = M || T || B --> Octet concatenation
 
-    octet *Hash_A = new octet,*Hash_B = new octet();
-    Message:: Hash_Function(r1, Hash_A, 0); // Hash_A = H(PKi || A)
-    Message:: Hash_Function(r2, Hash_B, 0); // Hash_B = H(M || T || B)
+    octet *Hash_A = new octet, *Hash_B = new octet();
+    Message::Hash_Function(HASH_TYPE_Ed25519,r1, Hash_A); // Hash_A = H(PKi || A)
+    Message::Hash_Function(HASH_TYPE_Ed25519,r2, Hash_B); // Hash_B = H(M || T || B)
 
     // Convert Octet to BIG for Point multiplication
     BIG A_hash;

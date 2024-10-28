@@ -2,18 +2,20 @@
 #include "Message.h"
 using namespace std;
 
-Message::Message(){
-
+Message::Message()
+{
 }
 
-Message::~Message() {
+Message::~Message()
+{
     delete[] message.val;
     delete[] Timestamp.val;
     delete[] B.val;
     delete[] finalMsg.val;
 }
 
-Message::Message(string message, chrono::system_clock::time_point Timestamp, core::octet B){
+Message::Message(string message, chrono::system_clock::time_point Timestamp, core::octet B)
+{
     this->message.len = message.size();
     this->message.max = message.size();
     this->message.val = new char[message.size()];
@@ -24,35 +26,43 @@ Message::Message(string message, chrono::system_clock::time_point Timestamp, cor
     this->B = B;
 }
 
-core::octet Message::getMessage(){
+core::octet Message::getMessage()
+{
     return message;
 }
 
-core::octet Message::getTimestamp(){
+core::octet Message::getTimestamp()
+{
     return Timestamp;
 }
 
-core::octet Message::getB(){
+core::octet Message::getB()
+{
     return B;
 }
 
-core::octet Message::getFinalMsg(){
+core::octet Message::getFinalMsg()
+{
     return finalMsg;
 }
 
-void Message::setMessage(core::octet message){
+void Message::setMessage(core::octet message)
+{
     this->message = message;
 }
 
-void Message::setTimestamp(core::octet Timestamp){
+void Message::setTimestamp(core::octet Timestamp)
+{
     this->Timestamp = Timestamp;
 }
 
-void Message::setB(core::octet B){
+void Message::setB(core::octet B)
+{
     this->B = B;
 }
 
-void Message::setFinalMsg(core::octet finalMsg){
+void Message::setFinalMsg(core::octet finalMsg)
+{
     this->finalMsg = finalMsg;
 }
 
@@ -61,30 +71,39 @@ using namespace Ed25519;
 using namespace B256_56;
 using namespace F25519;
 
-void Message::Hash_Function(octet *input, octet *output, int pad){
-    int n = -1;
-    GPhash(SHA256, 32, output, 32, pad, input, n, nullptr);
+void Message::Hash_Function(int hlen, octet *input, octet *output)
+{
+    char hash[128];
+    octet H = {0, sizeof(hash), hash};
 
-    BIG x, prime;
-    BIG_fromBytes(x, output->val);
-    BIG_zero(prime);
-    BIG_rcopy(prime, Modulus);
-    BIG_mod(x, prime);
-    output->len = 32;
-    output->max = 32;
-    output->val = new char[32];
-    BIG_toBytes(output->val, x);
+    // Perform hashing using the SPhash function
+    SPhash(MC_SHA2, hlen, &H, input);
+
+    // Store the hash in the output octet
+    output->len = hlen;
+    output->max = hlen;
+    output->val = new char[hlen];
+    memcpy(output->val, H.val, hlen);
 }
 
 void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 {
     int total_length = data1->len + data2->len;
+
+    // Allocate memory for the new concatenated value
+    result->val = (char *)malloc(total_length);
+    result->max = total_length;
     result->len = total_length;
+
+    // Copy data from the first octet into the output
     memcpy(result->val, data1->val, data1->len);
+
+    // Copy data from the second octet into the output (after the first)
     memcpy(result->val + data1->len, data2->val, data2->len);
 }
 
-void Message::add_octets(octet *data1, octet *data2, octet *result){
+void Message::add_octets(octet *data1, octet *data2, octet *result)
+{
     BIG point1, point2;
     BIG_fromBytes(point1, data1->val);
     BIG_fromBytes(point2, data2->val);
@@ -96,7 +115,7 @@ void Message::add_octets(octet *data1, octet *data2, octet *result){
     BIG_toBytes(result->val, sum);
 }
 
-void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, octet* result)
+void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, octet *result)
 {
     using namespace chrono;
     auto time_since_epoch = timeStamp.time_since_epoch();
@@ -108,7 +127,7 @@ void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, oct
     result->len = 4;
     result->max = 4;
     result->val = new char[4];
-    unsigned char* ptr = (unsigned char*)result->val;
+    unsigned char *ptr = (unsigned char *)result->val;
 
     // Store the 32-bit (4-byte) truncated value into the octet
     for (int i = 3; i >= 0; i--)
@@ -118,11 +137,11 @@ void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, oct
     }
 }
 
-void Message::multiply_octet(octet *data1, octet *data2, octet *result){
-    BIG point1, point2;
+void Message::multiply_octet(octet *data1, octet *data2, octet *result)
+{
+    BIG point1, point2, product;
     BIG_fromBytes(point1, data1->val);
     BIG_fromBytes(point2, data2->val);
-    BIG product;
     BIG_mul(product, point1, point2);
     result->len = 32;
     result->max = 32;
