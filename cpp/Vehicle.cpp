@@ -19,6 +19,7 @@ Vehicle::Vehicle() {}
 
 Vehicle::Vehicle(csprng *RNG, TA ta)
 {
+    this->ta = ta;
     this->vehicleKey = Key(RNG);
 }
 octet Vehicle::getRegistrationId()
@@ -106,7 +107,7 @@ void Vehicle::requestVerification(csprng *RNG)
 //     OCT_output(&SIG);
 // }
 
-bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message msg)
+bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
 {
     using namespace Ed25519;
     Key randKey(RNG);
@@ -118,16 +119,16 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message msg)
     octet randKeyPublicKey = randKey.getPublicKey();
     OCT_copy(B, &randKeyPublicKey);
 
-    msg = Message(message, chrono::system_clock::now(), *B);
+    *msg = Message(message, chrono::system_clock::now(), *B);
 
     octet hashMsg;
 
     octet temp1, temp2;
-    octet msgMessage = msg.getMessage();
-    octet msgTimestamp = msg.getTimestamp();
+    octet msgMessage = msg->getMessage();
+    octet msgTimestamp = msg->getTimestamp();
     Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp1);
 
-    octet msgB = msg.getB();
+    octet msgB = msg->getB();
     Message::Concatenate_octet(&temp1, &msgB, &temp2);
 
     Message::Hash_Function(HASH_TYPE_Ed25519,&temp2, &hashMsg);
@@ -141,7 +142,7 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message msg)
 
     Message::add_octets(result, part3, &signedMessage); // signature Key + private Key + b* H(M || T || B)
 
-    msg.setFinalMsg(signedMessage);
+    msg->setFinalMsg(signedMessage);
 
     return true;
 }

@@ -40,7 +40,7 @@ int main()
     Message msg;
     octet B;
     string message = "Mugiwara";
-    vehicle.signMessage(&RNG, message, &B, msg);
+    vehicle.signMessage(&RNG, message, &B, &msg);
     
     // verification by the receiver 
     Vehicle receiverVehicle = Vehicle(&RNG, ta);
