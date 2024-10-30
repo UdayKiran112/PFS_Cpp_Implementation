@@ -8,13 +8,12 @@ Message::Message()
 
 Message::~Message()
 {
-    delete[] message.val;
-    delete[] Timestamp.val;
-    delete[] B.val;
-    delete[] finalMsg.val;
+    // delete[] message.val;
+    // delete[] Timestamp.val;
+    // delete[] finalMsg.val;
 }
 
-Message::Message(string message, chrono::system_clock::time_point Timestamp, core::octet B)
+Message::Message(string message, chrono::system_clock::time_point Timestamp, core::octet *B)
 {
     this->message.len = message.size();
     this->message.max = message.size();
@@ -23,7 +22,7 @@ Message::Message(string message, chrono::system_clock::time_point Timestamp, cor
 
     timestamp_to_octet(Timestamp, &this->Timestamp);
 
-    this->B = B;
+    this->B = *B;
 }
 
 core::octet Message::getMessage()

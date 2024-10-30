@@ -38,7 +38,8 @@ int main()
     vehicle.requestVerification(&RNG);
 
     Message msg;
-    octet B;
+    char pub[2 * EFS_Ed25519 + 1];
+    octet B={0, sizeof(pub), pub};
     string message = "Mugiwara";
     vehicle.signMessage(&RNG, message, &B, &msg);
     
@@ -49,4 +50,5 @@ int main()
     octet Ap = vehicle.getA();
     receiverVehicle.Validate_Message(&generator, &vehicleSignKey, &vehiclePubKey, &Ap, msg);
 
+    return 0;
 }

@@ -126,11 +126,11 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
 
     Message::add_octets(groupPrivateKey, &product, SignatureKey);
 
-    // Clean up
-    delete[] result.val;
-    delete[] hashResult.val;
-    delete[] product.val;
-    delete[] publicKey.val;
+    // // Clean up
+    // delete[] result.val;
+    // delete[] hashResult.val;
+    // delete[] product.val;
+    // delete[] publicKey.val;
 
     return true;
 }
