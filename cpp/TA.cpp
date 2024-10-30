@@ -2,7 +2,7 @@
 #include "TA.h"
 using namespace std;
 
-static bool signatureGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehiclePublicKey, octet *SignatureKey, octet *A);
+static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehiclePublicKey, octet *SignatureKey, octet *A);
 bool checkRegValid(octet *registrationId);
 
 TA::TA() {}
@@ -21,13 +21,39 @@ void TA::validateRequest(csprng *RNG, octet *registrationId, octet *vehiclePubli
         cout << "Registration ID is not valid" << endl;
         return;
     }
-    // add (registrationId, vehiclePublicKey) to the map
+    
+    // Add (registrationId, vehiclePublicKey) to the map
     auto dict = this->getDictionary();
     dict.push_back(make_pair(*registrationId, *vehiclePublicKey));
     this->setDictionary(dict);
-    // generate signatureKey and A
-    auto temp = this->getGroupKey().getPrivateKey();
-    bool sigGen = signatureGeneration(RNG, &temp, vehiclePublicKey, SignatureKey, A);
+
+    // Initialize SignatureKey and A
+    char sigKeyBuff[2 * EFS_Ed25519 + 1];                    
+    SignatureKey->len = 2* EFS_Ed25519 + 1;                  
+    SignatureKey->max = sizeof(sigKeyBuff); 
+    SignatureKey->val = sigKeyBuff;         
+
+    char aBuff[2 * EFS_Ed25519 + 1];         
+    A->len = 2* EFS_Ed25519 + 1;             
+    A->max = sizeof(aBuff); 
+    A->val = aBuff;         
+
+    // Generate signatureKey and A
+
+    // allocate mem to temp
+    char tempbuff[EGS_Ed25519];
+    octet temp;
+    temp.len = EGS_Ed25519;
+    temp.max = sizeof(tempbuff);
+    temp.val = tempbuff;
+
+    temp = this->groupKey.getPrivateKey();
+    if (temp.len == 0) {
+        cout << "Group private key is not valid." << endl;
+        return; // Handle this case as needed
+    }
+
+    bool sigGen = signatureKeyGeneration(RNG, &temp, vehiclePublicKey, SignatureKey, A);
     if (!sigGen)
     {
         cout << "Signature generation failed" << endl;
@@ -57,19 +83,18 @@ void TA::setDictionary(vector<pair<octet, octet>> dictionary)
 
 bool checkRegValid(octet *registrationId)
 {
-    // TODO
-    //  Check if registrationId is valid
+    // TODO: Check if registrationId is valid
     return true;
 }
 
-static bool signatureGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehiclePublicKey, octet *SignatureKey, octet *A)
+static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehiclePublicKey, octet *SignatureKey, octet *A)
 {
     // Generate a random key
     Key randomKey(RNG);
 
     // Ensure 'result' is properly initialized to handle the concatenation
-    char res[2*(2 * EFS_Ed25519 + 1)];
-    octet result={0,sizeof(res),res};
+    char res[2 * (2 * EFS_Ed25519 + 1)];
+    octet result = {0, sizeof(res), res};
 
     // Concatenate vehicle public key and random private key
     auto publicKey = randomKey.getPublicKey();
@@ -78,16 +103,27 @@ static bool signatureGeneration(csprng *RNG, octet *groupPrivateKey, octet *vehi
 
     // Hash the concatenated result into a temporary hash result
     char hres[HASH_TYPE_Ed25519];
-    octet hashResult={0,sizeof(hres),hres};
-    Message::Hash_Function(HASH_TYPE_Ed25519,&result, &hashResult);
+    octet hashResult = {0, sizeof(hres), hres};
+    Message::Hash_Function(HASH_TYPE_Ed25519, &result, &hashResult);
 
     // Multiply the random private key by the hash result
     auto privateKey = randomKey.getPrivateKey();
     char prod[EGS_Ed25519];
-    octet product={0,sizeof(prod),prod};
+    octet product = {0, sizeof(prod), prod};
     Message::multiply_octet(&privateKey, &hashResult, &product);
 
-    // Add the group private key to the multiplication result
+    // Before add_octets debug
+    cout << "groupPrivateKey length: " << groupPrivateKey->len << ", Max: " << groupPrivateKey->max << endl;
+    cout << "product length: " << product.len << ", Max: " << product.max << endl;
+    cout << "SignatureKey length: " << SignatureKey->len << ", Max: " << SignatureKey->max << endl;
+
+    // Ensure lengths are valid before adding
+    if (groupPrivateKey->len == 0 || product.len == 0 || SignatureKey->len == 0) {
+        cout << "Error: Invalid lengths - groupPrivateKey length: " << groupPrivateKey->len 
+             << ", product length: " << product.len << ", SignatureKey length: " << SignatureKey->len << endl;
+        return false;
+    }
+
     Message::add_octets(groupPrivateKey, &product, SignatureKey);
 
     // Clean up

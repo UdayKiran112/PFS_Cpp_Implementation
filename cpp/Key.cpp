@@ -82,8 +82,6 @@ void Key::PointGeneration(Ed25519::ECP *G)
     else
     {
         ECP_copy(G, &P);
-        cout << "Point generated" << endl;
-        ECP_output(G);
     }
 }
 
