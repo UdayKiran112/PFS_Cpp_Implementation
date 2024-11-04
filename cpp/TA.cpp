@@ -21,22 +21,22 @@ void TA::validateRequest(csprng *RNG, octet *registrationId, octet *vehiclePubli
         cout << "Registration ID is not valid" << endl;
         return;
     }
-    
+
     // Add (registrationId, vehiclePublicKey) to the map
     auto dict = this->getDictionary();
     dict.push_back(make_pair(*registrationId, *vehiclePublicKey));
     this->setDictionary(dict);
 
     // Initialize SignatureKey and A
-    char sigKeyBuff[2 * EFS_Ed25519 + 1];                    
-    SignatureKey->len = 2* EFS_Ed25519 + 1;                  
-    SignatureKey->max = sizeof(sigKeyBuff); 
-    SignatureKey->val = sigKeyBuff;         
+    char sigKeyBuff[2 * EFS_Ed25519 + 1];
+    SignatureKey->len = 2 * EFS_Ed25519 + 1;
+    SignatureKey->max = sizeof(sigKeyBuff);
+    SignatureKey->val = sigKeyBuff;
 
-    char aBuff[2 * EFS_Ed25519 + 1];         
-    A->len = 2* EFS_Ed25519 + 1;             
-    A->max = sizeof(aBuff); 
-    A->val = aBuff;         
+    char aBuff[2 * EFS_Ed25519 + 1];
+    A->len = 2 * EFS_Ed25519 + 1;
+    A->max = sizeof(aBuff);
+    A->val = aBuff;
 
     // Generate signatureKey and A
 
@@ -48,7 +48,8 @@ void TA::validateRequest(csprng *RNG, octet *registrationId, octet *vehiclePubli
     temp.val = tempbuff;
 
     temp = this->groupKey.getPrivateKey();
-    if (temp.len == 0) {
+    if (temp.len == 0)
+    {
         cout << "Group private key is not valid." << endl;
         return; // Handle this case as needed
     }
@@ -58,6 +59,10 @@ void TA::validateRequest(csprng *RNG, octet *registrationId, octet *vehiclePubli
     {
         cout << "Signature generation failed" << endl;
         return;
+    }
+    else
+    {
+        cout << "Signature generated successfully" << endl;
     }
 }
 
@@ -99,11 +104,18 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
     // Concatenate vehicle public key and random private key
     auto publicKey = randomKey.getPublicKey();
     OCT_copy(A, &publicKey);
+
+    Ed25519::ECP Apoint;
+    Ed25519::ECP_fromOctet(&Apoint, A);
+
+    cout << "A point: ";
+    Ed25519::ECP_output(&Apoint);
+    cout << endl;
+
     Message::Concatenate_octet(vehiclePublicKey, &publicKey, &result);
 
     // Hash the concatenated result into a temporary hash result
-    char hres[HASH_TYPE_Ed25519];
-    octet hashResult = {0, sizeof(hres), hres};
+    octet hashResult;
     Message::Hash_Function(HASH_TYPE_Ed25519, &result, &hashResult);
 
     // Multiply the random private key by the hash result
@@ -112,25 +124,25 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
     octet product = {0, sizeof(prod), prod};
     Message::multiply_octet(&privateKey, &hashResult, &product);
 
-    // Before add_octets debug
-    cout << "groupPrivateKey length: " << groupPrivateKey->len << ", Max: " << groupPrivateKey->max << endl;
-    cout << "product length: " << product.len << ", Max: " << product.max << endl;
-    cout << "SignatureKey length: " << SignatureKey->len << ", Max: " << SignatureKey->max << endl;
-
     // Ensure lengths are valid before adding
-    if (groupPrivateKey->len == 0 || product.len == 0 || SignatureKey->len == 0) {
-        cout << "Error: Invalid lengths - groupPrivateKey length: " << groupPrivateKey->len 
+    if (groupPrivateKey->len == 0 || product.len == 0 || SignatureKey->len == 0)
+    {
+        cout << "Error: Invalid lengths - groupPrivateKey length: " << groupPrivateKey->len
              << ", product length: " << product.len << ", SignatureKey length: " << SignatureKey->len << endl;
         return false;
     }
 
     Message::add_octets(groupPrivateKey, &product, SignatureKey);
 
-    // // Clean up
-    // delete[] result.val;
-    // delete[] hashResult.val;
-    // delete[] product.val;
-    // delete[] publicKey.val;
+    cout << "Signature Key: ";
+    OCT_output(SignatureKey);
+    cout << endl;
+
+    // Clean up
+    free(result.val);
+    delete[] hashResult.val;
+    delete[] product.val;
+    delete[] publicKey.val;
 
     return true;
 }

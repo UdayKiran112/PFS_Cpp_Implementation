@@ -3,9 +3,6 @@
 #include "Vehicle.h"
 using namespace std;
 
-bool signMessage(bool ph, octet *privateKey, octet *context, octet *message, octet *signature);
-void sendingMessage(core::octet vehiclePrivateKey, core::octet signatureKey, Message message);
-
 Vehicle::Vehicle(octet registrationId, Key vehicleKey, octet signatureKey, octet A, TA ta)
 {
     this->registrationId = registrationId;
@@ -84,6 +81,9 @@ void Vehicle::requestVerification(csprng *RNG)
     this->ta.validateRequest(RNG, &temp, &publicKey, &signkey, &virpubkey);
     this->setSignatureKey(signkey);
     this->setA(virpubkey);
+
+    // clean up
+    delete[] publicKey.val;
 }
 
 // static char *StrtoCharstar(string s)
@@ -131,19 +131,32 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     octet msgB = msg->getB();
     Message::Concatenate_octet(&temp1, &msgB, &temp2);
 
-    Message::Hash_Function(HASH_TYPE_Ed25519,&temp2, &hashMsg);
+    Message::Hash_Function(HASH_TYPE_Ed25519, &temp2, &hashMsg);
 
     // Generate Signature --> signedMessage = SignatureKey + privateKey + randKey.getPrivateKey() * H(M || T || B)
-    octet *result = new octet();
-    Message::add_octets(&privateKey, &signatureKey, result); // signature Key + private Key
-    octet *part3 = new octet();
+    octet result;
+    Message::add_octets(&privateKey, &signatureKey, &result); // signature Key + private Key
+    octet part3;
     octet randKeyPrivateKey = randKey.getPrivateKey();
-    Message::multiply_octet(&randKeyPrivateKey, &hashMsg, part3); // b* H(M || T || B)
+    Message::multiply_octet(&randKeyPrivateKey, &hashMsg, &part3); // b* H(M || T || B)
 
-    Message::add_octets(result, part3, &signedMessage); // signature Key + private Key + b* H(M || T || B)
+    Message::add_octets(&result, &part3, &signedMessage); // signature Key + private Key + b* H(M || T || B)
 
     msg->setFinalMsg(signedMessage);
 
+    // print the signature
+    cout << "Signature = ";
+    OCT_output(&signedMessage);
+    cout << endl;
+
+    // Clean up
+    free(temp1.val);
+    free(temp2.val);
+    delete[] randKeyPublicKey.val;
+    delete[] result.val;
+    delete[] part3.val;
+    delete[] hashMsg.val;
+    delete[] signedMessage.val;
     return true;
 }
 
@@ -217,8 +230,8 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     Message::Concatenate_octet(temp, &msgB, r2); // r2 = M || T || B --> Octet concatenation
 
     octet *Hash_A = new octet, *Hash_B = new octet();
-    Message::Hash_Function(HASH_TYPE_Ed25519,r1, Hash_A); // Hash_A = H(PKi || A)
-    Message::Hash_Function(HASH_TYPE_Ed25519,r2, Hash_B); // Hash_B = H(M || T || B)
+    Message::Hash_Function(HASH_TYPE_Ed25519, r1, Hash_A); // Hash_A = H(PKi || A)
+    Message::Hash_Function(HASH_TYPE_Ed25519, r2, Hash_B); // Hash_B = H(M || T || B)
 
     // Convert Octet to BIG for Point multiplication
     BIG A_hash;

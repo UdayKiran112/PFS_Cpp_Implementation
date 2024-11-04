@@ -33,7 +33,7 @@ int main()
     // initilize an octet with a static integer in it
     octet reg = {0, 4, (char *)"1234"};
     // output the octet reg
-    OCT_output_string(&reg);
+    OCT_output(&reg);
     vehicle.setRegistrationId(reg); // for testing purposes
     vehicle.requestVerification(&RNG);
 
@@ -49,6 +49,9 @@ int main()
     octet vehiclePubKey = vehicle.getVehicleKey().getPublicKey();
     octet Ap = vehicle.getA();
     receiverVehicle.Validate_Message(&generator, &vehicleSignKey, &vehiclePubKey, &Ap, msg);
+
+    // clean up
+    delete[] vehiclePubKey.val;
 
     return 0;
 }

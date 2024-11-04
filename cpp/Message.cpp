@@ -91,10 +91,15 @@ void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 
     // Allocate memory for the new concatenated value
     result->val = (char *)malloc(total_length);
+    if (!result->val)
+    {
+        throw std::bad_alloc(); // Throw if malloc fails
+    }
     result->max = total_length;
     result->len = total_length;
 
-    if (result->max < (data1->len + data2->len)) {
+    if (result->max < (data1->len + data2->len))
+    {
         throw std::length_error("Not enough space in result octet");
     }
 
@@ -107,11 +112,6 @@ void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 
 void Message::add_octets(octet *data1, octet *data2, octet *result)
 {
-
-    // Debugging: Check input octet lengths
-    cout << "Data1 length: " << data1->len << ", Max: " << data1->max << endl;
-    cout << "Data2 length: " << data2->len << ", Max: " << data2->max << endl;
-
     // Error checking
     if (!data1 || !data2 || !result)
     {
@@ -133,12 +133,6 @@ void Message::add_octets(octet *data1, octet *data2, octet *result)
 
     BIG curve_order, point1, point2, sum;
 
-    // Initialize the BIG variables to zero.
-    BIG_zero(curve_order);
-    BIG_zero(point1);
-    BIG_zero(point2);
-    BIG_zero(sum);
-
     // Copy the curve order.
     BIG_rcopy(curve_order, CURVE_Order);
 
@@ -159,35 +153,45 @@ void Message::add_octets(octet *data1, octet *data2, octet *result)
 void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, octet *result)
 {
     using namespace chrono;
+
+    // Check if the result is not null
+    if (result == nullptr) {
+        throw std::invalid_argument("Result octet must not be null");
+    }
+
+    // Deallocate existing memory if previously allocated
+    if (result->val != nullptr) {
+        delete[] result->val; // Free previously allocated memory
+    }
+
     auto time_since_epoch = timeStamp.time_since_epoch();
     auto millis = duration_cast<milliseconds>(time_since_epoch).count();
 
     // Truncate to 32 bits (4 bytes)
     uint32_t truncated_millis = static_cast<uint32_t>(millis);
 
+    // Allocate memory for 4 bytes
     result->len = 4;
     result->max = 4;
     result->val = new char[4];
-    unsigned char *ptr = (unsigned char *)result->val;
+    
+    if (result->val == nullptr) {
+        throw std::runtime_error("Memory allocation failed");
+    }
+
+    unsigned char *ptr = reinterpret_cast<unsigned char *>(result->val);
 
     // Store the 32-bit (4-byte) truncated value into the octet
-    for (int i = 3; i >= 0; i--)
-    {
+    for (int i = 3; i >= 0; i--) {
         ptr[i] = truncated_millis & 0xFF;
         truncated_millis >>= 8;
     }
 }
 
+
 void Message::multiply_octet(octet *data1, octet *data2, octet *result)
 {
     BIG point1, point2, product;
-
-    // DEBUG - Print data1 and data2
-    cout << "Data1: ";
-    OCT_output(data1);
-    cout << "Data2: ";
-    OCT_output(data2);
-    cout << endl;
 
     if (!data1 || !data1->val || data1->len <= 0)
     {

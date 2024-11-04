@@ -55,3 +55,5 @@ cpp/obj/Lib/rand.o
 cpp/obj/Lib/randapi.o
 cpp/obj/Lib/rom_curve_Ed25519.o
 cpp/obj/Lib/rom_field_F25519.o
+.vscode/settings.json
+.vscode/settings.json
