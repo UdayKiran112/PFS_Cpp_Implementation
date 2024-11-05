@@ -8,13 +8,15 @@ Message::Message()
 
 Message::~Message()
 {
-    // delete[] message.val;
-    // delete[] Timestamp.val;
+    delete[] message.val;
+    delete[] Timestamp.val;
+    delete[] B.val;
     // delete[] finalMsg.val;
 }
 
-Message::Message(string message, chrono::system_clock::time_point Timestamp, core::octet *B)
+void Message::setFullMessage(string message, chrono::system_clock::time_point Timestamp, core::octet *B)
 {
+
     this->message.len = message.size();
     this->message.max = message.size();
     this->message.val = new char[message.size()];

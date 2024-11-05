@@ -26,7 +26,7 @@ private:
 public:
     Message();
     ~Message();
-    Message(string message, chrono::system_clock::time_point Timestamp, core::octet *B);
+    void setFullMessage(string message, chrono::system_clock::time_point Timestamp, core::octet *B);
     core::octet getMessage();
     core::octet getTimestamp();
     core::octet getB();

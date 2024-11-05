@@ -119,7 +119,9 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     octet randKeyPublicKey = randKey.getPublicKey();
     OCT_copy(B, &randKeyPublicKey);
 
-    *msg = Message(message, chrono::system_clock::now(), B);
+    auto ts = std::chrono::system_clock::now();
+    // *msg = Message(message, ts, B);
+    msg->setFullMessage(message, ts, B);
 
     octet hashMsg;
 
