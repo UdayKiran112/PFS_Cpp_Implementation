@@ -22,7 +22,10 @@ Message::Message(string message, chrono::system_clock::time_point Timestamp, cor
 
     timestamp_to_octet(Timestamp, &this->Timestamp);
 
-    this->B = *B;
+    this->B.len = B->len;
+    this->B.max = B->max;
+    this->B.val = new char[B->len];
+    memcpy(this->B.val, B->val, B->len);
 }
 
 core::octet Message::getMessage()
