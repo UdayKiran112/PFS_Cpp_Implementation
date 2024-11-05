@@ -8,9 +8,9 @@ Message::Message()
 
 Message::~Message()
 {
-    delete[] message.val;
-    delete[] Timestamp.val;
-    delete[] B.val;
+    // delete[] message.val;
+    // delete[] Timestamp.val;
+    // delete[] B.val;
     // delete[] finalMsg.val;
 }
 
@@ -22,7 +22,10 @@ void Message::setFullMessage(string message, chrono::system_clock::time_point Ti
     this->message.val = new char[message.size()];
     memcpy(this->message.val, message.c_str(), message.size());
 
-    timestamp_to_octet(Timestamp, &this->Timestamp);
+    char temp[4];
+    octet t = {4, 4, temp};
+    timestamp_to_octet(Timestamp, &t);
+    setTimestamp(t);
 
     this->B.len = B->len;
     this->B.max = B->max;
@@ -94,18 +97,11 @@ void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 {
     int total_length = data1->len + data2->len;
 
-    // Allocate memory for the new concatenated value
-    result->val = (char *)malloc(total_length);
-    if (!result->val)
+    // Check if result has enough space
+    if (result->max < total_length)
     {
-        throw std::bad_alloc(); // Throw if malloc fails
-    }
-    result->max = total_length;
-    result->len = total_length;
-
-    if (result->max < (data1->len + data2->len))
-    {
-        throw std::length_error("Not enough space in result octet");
+        std::cerr << "Error: result octet does not have enough space to hold concatenated data." << std::endl;
+        return;
     }
 
     // Copy data from the first octet into the output
@@ -113,6 +109,9 @@ void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 
     // Copy data from the second octet into the output (after the first)
     memcpy(result->val + data1->len, data2->val, data2->len);
+
+    // Set the length of the output
+    result->len = total_length;
 }
 
 void Message::add_octets(octet *data1, octet *data2, octet *result)
@@ -159,40 +158,26 @@ void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, oct
 {
     using namespace chrono;
 
-    // Check if the result is not null
-    if (result == nullptr) {
-        throw std::invalid_argument("Result octet must not be null");
-    }
-
-    // Deallocate existing memory if previously allocated
-    if (result->val != nullptr) {
-        delete[] result->val; // Free previously allocated memory
-    }
-
     auto time_since_epoch = timeStamp.time_since_epoch();
     auto millis = duration_cast<milliseconds>(time_since_epoch).count();
 
     // Truncate to 32 bits (4 bytes)
     uint32_t truncated_millis = static_cast<uint32_t>(millis);
 
-    // Allocate memory for 4 bytes
-    result->len = 4;
-    result->max = 4;
-    result->val = new char[4];
-    
-    if (result->val == nullptr) {
+    if (result->val == nullptr)
+    {
         throw std::runtime_error("Memory allocation failed");
     }
 
     unsigned char *ptr = reinterpret_cast<unsigned char *>(result->val);
 
     // Store the 32-bit (4-byte) truncated value into the octet
-    for (int i = 3; i >= 0; i--) {
+    for (int i = 3; i >= 0; i--)
+    {
         ptr[i] = truncated_millis & 0xFF;
         truncated_millis >>= 8;
     }
 }
-
 
 void Message::multiply_octet(octet *data1, octet *data2, octet *result)
 {

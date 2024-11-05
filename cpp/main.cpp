@@ -46,6 +46,11 @@ int main()
     // verification by the receiver 
     Vehicle receiverVehicle = Vehicle(&RNG, ta);
     octet vehicleSignKey = vehicle.getSignatureKey();
+
+    cout<<"Vehicle Signature Key= ";
+    OCT_output(&vehicleSignKey);
+    cout<<endl;
+
     octet vehiclePubKey = vehicle.getVehicleKey().getPublicKey();
     octet Ap = vehicle.getA();
     receiverVehicle.Validate_Message(&generator, &vehicleSignKey, &vehiclePubKey, &Ap, msg);

@@ -120,7 +120,13 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     OCT_copy(B, &randKeyPublicKey);
 
     auto ts = std::chrono::system_clock::now();
-    // *msg = Message(message, ts, B);
+
+    // Print timestamp
+    std::time_t timeT = std::chrono::system_clock::to_time_t(ts);
+    std::tm localTm = *std::localtime(&timeT);
+    std::cout << "Timestamp = " << std::put_time(&localTm, "%Y-%m-%d %H:%M:%S") << std::endl;
+
+    // Set the full message
     msg->setFullMessage(message, ts, B);
 
     octet hashMsg;
@@ -176,17 +182,27 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     // Retrieve the timestamp from the message as a 4-byte octet
     core::octet timestamp_oct = msg.getTimestamp();
 
-    // Convert 4-byte octet to a 32-bit integer (milliseconds)
-    uint32_t millis = 0;
-    unsigned char *ptr = (unsigned char *)timestamp_oct.val;
-    for (int i = 0; i < 4; i++)
+    cout << "Timestamp in octet : ";
+    OCT_output(&timestamp_oct);
+    cout << endl;
+
+    if (timestamp_oct.len < 4)
     {
-        millis <<= 8;
-        millis |= ptr[i];
+        cout << "Error: Timestamp octet length is insufficient." << endl;
+        return false;
     }
 
+    uint32_t millis;
+    memcpy(&millis, timestamp_oct.val, sizeof(millis));
+
+    // If the timestamp was stored in little-endian format
+    millis = __builtin_bswap32(millis); // Swap bytes if necessary for big-endian
+
+    // Convert milliseconds since epoch to duration
+    chrono::milliseconds ms(millis);
+
     // Convert milliseconds since epoch to chrono::system_clock::time_point
-    chrono::system_clock::time_point receivedTimestamp = chrono::system_clock::time_point(chrono::milliseconds(millis));
+    chrono::system_clock::time_point receivedTimestamp = chrono::system_clock::time_point(ms);
 
     auto now = chrono::system_clock::now();
 
@@ -222,18 +238,25 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     ECP_copy(&RHS, &SigKey);   // RHS = GK
     ECP_add(&RHS, &VehPubKey); // RHS = GK + PKi
 
-    octet *r1 = new octet(), *r2 = new octet(), *temp = new octet();
-    Message::Concatenate_octet(VehiclePublicKey, A, r1); // r1 = PKi || A --> Octet concatenation
+    char r1_val[2 * EFS_Ed25519 + 1];
+    octet r1 = {0, sizeof(r1_val), r1_val};
+    Message::Concatenate_octet(VehiclePublicKey, A, &r1); // r1 = PKi || A --> Octet concatenation
 
     octet msgMessage = msg.getMessage();
     octet msgTimestamp = msg.getTimestamp();
-    Message::Concatenate_octet(&msgMessage, &msgTimestamp, temp); // temp = M || T ||--> Octet concatenation
 
-    Message::Concatenate_octet(temp, &msgB, r2); // r2 = M || T || B --> Octet concatenation
+    char temp_val[2 * EFS_Ed25519 + 1];
+    octet temp = {0, sizeof(temp_val), temp_val};
+    Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp); // temp = M || T ||--> Octet concatenation
+
+    char r2_val[3 * EFS_Ed25519 + 1];
+    octet r2 = {0, sizeof(r2_val), r2_val};
+
+    Message::Concatenate_octet(&temp, &msgB, &r2); // r2 = M || T || B --> Octet concatenation
 
     octet *Hash_A = new octet, *Hash_B = new octet();
-    Message::Hash_Function(HASH_TYPE_Ed25519, r1, Hash_A); // Hash_A = H(PKi || A)
-    Message::Hash_Function(HASH_TYPE_Ed25519, r2, Hash_B); // Hash_B = H(M || T || B)
+    Message::Hash_Function(HASH_TYPE_Ed25519, &r1, Hash_A); // Hash_A = H(PKi || A)
+    Message::Hash_Function(HASH_TYPE_Ed25519, &r2, Hash_B); // Hash_B = H(M || T || B)
 
     // Convert Octet to BIG for Point multiplication
     BIG A_hash;

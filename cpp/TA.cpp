@@ -97,10 +97,6 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
     // Generate a random key
     Key randomKey(RNG);
 
-    // Ensure 'result' is properly initialized to handle the concatenation
-    char res[2 * (2 * EFS_Ed25519 + 1)];
-    octet result = {0, sizeof(res), res};
-
     // Concatenate vehicle public key and random private key
     auto publicKey = randomKey.getPublicKey();
     OCT_copy(A, &publicKey);
@@ -111,6 +107,11 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
     cout << "A point: ";
     Ed25519::ECP_output(&Apoint);
     cout << endl;
+
+    // Ensure 'result' is properly initialized to handle the concatenation
+    int total_len = vehiclePublicKey->len + publicKey.len;
+    char res[total_len];
+    octet result = {0, static_cast<int>(sizeof(res)), res};
 
     Message::Concatenate_octet(vehiclePublicKey, &publicKey, &result);
 
@@ -139,7 +140,6 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
     cout << endl;
 
     // Clean up
-    free(result.val);
     delete[] hashResult.val;
     delete[] product.val;
     delete[] publicKey.val;
