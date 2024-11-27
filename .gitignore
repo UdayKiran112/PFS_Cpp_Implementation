@@ -58,3 +58,4 @@ cpp/obj/Lib/rom_field_F25519.o
 .vscode/settings.json
 .vscode/settings.json
 code-analyzer-report/index.html
+.vscode/launch.json

@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": ".",
-      "program": "build/Debug/outDebug",
+      "cwd": "/home/uday-kiran-gedela/Desktop/Final_Year_Project/CPP Implementation/PFS_Cpp_Implementation-/cpp/bin",
+      "program": "/home/uday-kiran-gedela/Desktop/Final_Year_Project/CPP Implementation/PFS_Cpp_Implementation-/cpp/bin/app",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

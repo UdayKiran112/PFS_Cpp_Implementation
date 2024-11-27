@@ -137,14 +137,14 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
 
     temp1.len = msgMessage.len + msgTimestamp.len;
     temp1.max = msgMessage.max + msgTimestamp.max + B->max;
-    temp1.val = (char *)malloc(temp1.max);
+    temp1.val = new char[temp1.max];
     Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp1);
 
     octet msgB = msg->getB();
 
     temp2.len = temp1.len + msgB.len;
     temp2.max = temp1.max;
-    temp2.val = (char *)malloc(temp2.max);
+    temp2.val = new char[temp2.max];
 
     Message::Concatenate_octet(&temp1, &msgB, &temp2);
 
@@ -167,13 +167,14 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     cout << endl;
 
     // Clean up
-    free(temp1.val);
-    free(temp2.val);
-    delete[] randKeyPublicKey.val;
+    delete[] temp1.val;
+    delete[] temp2.val;
     delete[] result.val;
     delete[] part3.val;
     delete[] hashMsg.val;
     delete[] signedMessage.val;
+    delete[] randKeyPublicKey.val;
+
     return true;
 }
 
