@@ -19,6 +19,12 @@ Vehicle::Vehicle(csprng *RNG, TA ta)
     this->ta = ta;
     this->vehicleKey = Key(RNG);
 }
+
+Vehicle::~Vehicle()
+{
+    delete[] A.val;
+}
+
 octet Vehicle::getRegistrationId()
 {
     return registrationId;
@@ -74,16 +80,30 @@ using namespace Ed25519;
 void Vehicle::requestVerification(csprng *RNG)
 {
     octet signkey;
-    char pub[2 * EFS_Ed25519 + 1];
+    char *pub = new char[2 * EFS_Ed25519 + 1];
     octet virpubkey = {0, sizeof(pub), pub};
+
+    // Create a copy of the public key before using it
     octet publicKey = this->getVehicleKey().getPublicKey();
+    char *pk_copy = new char[publicKey.len];
+    memcpy(pk_copy, publicKey.val, publicKey.len);
+    octet pk_octet = {publicKey.len, publicKey.max, pk_copy};
+
     auto temp = this->registrationId;
-    this->ta.validateRequest(RNG, &temp, &publicKey, &signkey, &virpubkey);
+    this->ta.validateRequest(RNG, &temp, &pk_octet, &signkey, &virpubkey);
+
+    char *a_val = new char[virpubkey.len];
+    memcpy(a_val, virpubkey.val, virpubkey.len);
+    octet a = {virpubkey.len, virpubkey.max, a_val};
+
     this->setSignatureKey(signkey);
-    this->setA(virpubkey);
+    this->setA(a);
 
     // clean up
+    delete[] pub;
+    delete[] pk_copy;
     delete[] publicKey.val;
+    delete[] virpubkey.val;
 }
 
 // static char *StrtoCharstar(string s)
@@ -124,7 +144,8 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     // Print timestamp
     std::time_t timeT = std::chrono::system_clock::to_time_t(ts);
     std::tm localTm = *std::localtime(&timeT);
-    std::cout << "Timestamp = " << std::put_time(&localTm, "%Y-%m-%d %H:%M:%S") << std::endl;
+    std::cout << "Timestamp in signMessage = " << std::put_time(&localTm, "%Y-%m-%d %H:%M:%S") << std::endl;
+    cout << endl;
 
     // Set the full message
     msg->setFullMessage(message, ts, B);
@@ -135,12 +156,19 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     octet msgMessage = msg->getMessage();
     octet msgTimestamp = msg->getTimestamp();
 
+    cout << "Timestamp in octet in signMessage: ";
+    OCT_output(&msgTimestamp);
+    cout << endl;
+
     temp1.len = msgMessage.len + msgTimestamp.len;
     temp1.max = msgMessage.max + msgTimestamp.max + B->max;
     temp1.val = new char[temp1.max];
     Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp1);
 
-    octet msgB = msg->getB();
+    // Allocate space for B
+    char b_val[2 * EFS_Ed25519 + 1];
+    octet msgB = {0, sizeof(b_val), b_val};
+    msgB = msg->getB();
 
     temp2.len = temp1.len + msgB.len;
     temp2.max = temp1.max;
@@ -174,7 +202,6 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     delete[] hashMsg.val;
     delete[] signedMessage.val;
     delete[] randKeyPublicKey.val;
-
     return true;
 }
 
@@ -189,32 +216,31 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
 {
     using namespace B256_56;
 
-    // Retrieve the timestamp from the message as a 4-byte octet
+    // Retrieve and convert timestamp
     core::octet timestamp_oct = msg.getTimestamp();
 
-    cout << "Timestamp in octet : ";
+    cout << "Timestamp in octet in Validate_Message: ";
     OCT_output(&timestamp_oct);
     cout << endl;
 
-    if (timestamp_oct.len < 4)
-    {
-        cout << "Error: Timestamp octet length is insufficient." << endl;
-        return false;
-    }
+    // Convert the octet to time_point
+    uint32_t timestamp_s;
+    memcpy(&timestamp_s, timestamp_oct.val, sizeof(timestamp_s));
 
-    uint32_t millis;
-    memcpy(&millis, timestamp_oct.val, sizeof(millis));
-
-    // If the timestamp was stored in little-endian format
-    millis = __builtin_bswap32(millis); // Swap bytes if necessary for big-endian
-
-    // Convert milliseconds since epoch to duration
-    chrono::milliseconds ms(millis);
-
-    // Convert milliseconds since epoch to chrono::system_clock::time_point
-    chrono::system_clock::time_point receivedTimestamp = chrono::system_clock::time_point(ms);
+    // Create time_point from seconds since epoch
+    chrono::system_clock::time_point receivedTimestamp =
+        chrono::system_clock::from_time_t(timestamp_s);
 
     auto now = chrono::system_clock::now();
+
+    // Log the timestamps for debugging
+    std::time_t receivedTimeT = std::chrono::system_clock::to_time_t(receivedTimestamp);
+    std::tm receivedLocalTm = *std::localtime(&receivedTimeT);
+    std::cout << "Received Timestamp = " << std::put_time(&receivedLocalTm, "%Y-%m-%d %H:%M:%S") << std::endl;
+
+    std::time_t nowTimeT = std::chrono::system_clock::to_time_t(now);
+    std::tm nowLocalTm = *std::localtime(&nowTimeT);
+    std::cout << "Current Timestamp = " << std::put_time(&nowLocalTm, "%Y-%m-%d %H:%M:%S") << std::endl;
 
     // Check for replay attack by comparing timestamps
     if (chrono::duration_cast<chrono::milliseconds>(now - receivedTimestamp).count() > T_replay)
@@ -225,12 +251,17 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
 
     ECP LHS, RHS, P, Apoint, Bpoint, SigKey, VehPubKey;
 
-    // Convert octet to ECP
-    ECP_fromOctet(&SigKey, signatureKey);
-    ECP_fromOctet(&VehPubKey, VehiclePublicKey);
-    ECP_fromOctet(&Apoint, A);
-    octet msgB = msg.getB();
-    ECP_fromOctet(&Bpoint, &msgB);
+    // Get B from message first
+    char b_val[2 * EFS_Ed25519 + 1];        // Allocate space for B value
+    octet msgB = {0, sizeof(b_val), b_val}; // Initialize octet properly
+    msgB = msg.getB();                      // Get B value from message
+
+    // Add null checks before using ECP_fromOctet
+    if (!signatureKey || !VehiclePublicKey || !A || !msgB.val)
+    {
+        cout << "Invalid input parameters - null pointer detected" << endl;
+        return false;
+    }
 
     // generate new variables to ensure original parameters are not changed
 
@@ -248,31 +279,38 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     ECP_copy(&RHS, &SigKey);   // RHS = GK
     ECP_add(&RHS, &VehPubKey); // RHS = GK + PKi
 
-    char r1_val[2 * EFS_Ed25519 + 1];
-    octet r1 = {0, sizeof(r1_val), r1_val};
+    char *r1_val = new char[VehiclePublicKey->len + A->len];
+    octet r1 = {0, VehiclePublicKey->len + A->len, r1_val};
     Message::Concatenate_octet(VehiclePublicKey, A, &r1); // r1 = PKi || A --> Octet concatenation
 
     octet msgMessage = msg.getMessage();
     octet msgTimestamp = msg.getTimestamp();
 
-    char temp_val[2 * EFS_Ed25519 + 1];
-    octet temp = {0, sizeof(temp_val), temp_val};
+    // Allocate new memory for temp
+    char *temp_val = new char[msgMessage.len + msgTimestamp.len];
+    octet temp = {0, (int)(msgMessage.len + msgTimestamp.len), temp_val};
     Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp); // temp = M || T ||--> Octet concatenation
 
-    char r2_val[3 * EFS_Ed25519 + 1];
-    octet r2 = {0, sizeof(r2_val), r2_val};
+    // Allocate new memory for r2
+    char *r2_val = new char[temp.len + msgB.len];
+    octet r2 = {0, (int)(temp.len + msgB.len), r2_val};
 
     Message::Concatenate_octet(&temp, &msgB, &r2); // r2 = M || T || B --> Octet concatenation
 
-    octet *Hash_A = new octet, *Hash_B = new octet();
-    Message::Hash_Function(HASH_TYPE_Ed25519, &r1, Hash_A); // Hash_A = H(PKi || A)
-    Message::Hash_Function(HASH_TYPE_Ed25519, &r2, Hash_B); // Hash_B = H(M || T || B)
+    // allocate space for Hash_A and Hash_B
+    char hash_A_val[2 * EFS_Ed25519 + 1];
+    octet Hash_A = {0, sizeof(hash_A_val), hash_A_val};
+    char hash_B_val[3 * EFS_Ed25519 + 1];
+    octet Hash_B = {0, sizeof(hash_B_val), hash_B_val};
+
+    Message::Hash_Function(HASH_TYPE_Ed25519, &r1, &Hash_A); // Hash_A = H(PKi || A)
+    Message::Hash_Function(HASH_TYPE_Ed25519, &r2, &Hash_B); // Hash_B = H(M || T || B)
 
     // Convert Octet to BIG for Point multiplication
     BIG A_hash;
-    BIG_fromBytes(A_hash, Hash_A->val);
+    BIG_fromBytes(A_hash, Hash_A.val); // Use . instead of ->
     BIG B_hash;
-    BIG_fromBytes(B_hash, Hash_B->val);
+    BIG_fromBytes(B_hash, Hash_B.val); // Use . instead of ->
 
     ECP_mul(&Apoint, A_hash); // Apoint = H(PKi || A) * A
     ECP_mul(&Bpoint, B_hash); // Bpoint = H(M || T || B) * B
@@ -287,6 +325,13 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
         cout << "Message has been Compromised\n";
         return false;
     }
+
+    // clean up
+    delete[] Hash_A.val;
+    delete[] Hash_B.val;
+    delete[] r1_val;
+    delete[] temp_val;
+    delete[] r2_val;
 
     return true;
 }

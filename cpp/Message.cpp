@@ -40,7 +40,20 @@ void Message::setFullMessage(string message, chrono::system_clock::time_point Ti
     this->Timestamp.val = new char[4];
     timestamp_to_octet(Timestamp, &this->Timestamp);
 
-    OCT_copy(B, &this->B);
+    // Properly initialize B octet before copying
+    if (B != nullptr && B->val != nullptr)
+    {
+        this->B.len = B->len;
+        this->B.max = B->len;
+        this->B.val = new char[B->len];
+        OCT_copy(B, &this->B);
+    }
+    else
+    {
+        this->B.len = 0;
+        this->B.max = 0;
+        this->B.val = nullptr;
+    }
 }
 
 core::octet Message::getMessage()
@@ -53,7 +66,7 @@ core::octet Message::getTimestamp()
     return Timestamp;
 }
 
-core::octet Message::getB()
+const core::octet &Message::getB()
 {
     return B;
 }
@@ -179,13 +192,15 @@ void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, oct
         throw std::runtime_error("Memory allocation failed");
     }
 
+    // Convert to big-endian if necessary
+    truncated_millis = __builtin_bswap32(truncated_millis);
+
     unsigned char *ptr = reinterpret_cast<unsigned char *>(result->val);
 
     // Store the 32-bit (4-byte) truncated value into the octet
-    for (int i = 3; i >= 0; i--)
+    for (int i = 0; i < 4; i++)
     {
-        ptr[i] = truncated_millis & 0xFF;
-        truncated_millis >>= 8;
+        ptr[i] = (truncated_millis >> (8 * (3 - i))) & 0xFF;
     }
 }
 
@@ -209,4 +224,27 @@ void Message::multiply_octet(octet *data1, octet *data2, octet *result)
     result->max = 32;
     result->val = new char[32];
     BIG_toBytes(result->val, product);
+}
+
+std::chrono::system_clock::time_point Message::deserializeTimestamp(const core::octet &timestamp_oct)
+{
+    if (timestamp_oct.len < 4)
+    {
+        throw std::runtime_error("Timestamp octet length is insufficient.");
+    }
+
+    uint32_t millis32 = 0;
+    const unsigned char *ptr = reinterpret_cast<const unsigned char *>(timestamp_oct.val);
+
+    // Read the 32-bit (4-byte) value from the octet
+    for (int i = 0; i < 4; i++)
+    {
+        millis32 = (millis32 << 8) | ptr[i];
+    }
+
+    // Convert from big-endian if necessary
+    millis32 = __builtin_bswap32(millis32);
+
+    // Convert milliseconds since epoch to chrono::system_clock::time_point
+    return std::chrono::system_clock::time_point(std::chrono::milliseconds(millis32));
 }

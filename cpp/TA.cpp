@@ -33,10 +33,16 @@ void TA::validateRequest(csprng *RNG, octet *registrationId, octet *vehiclePubli
     SignatureKey->max = sizeof(sigKeyBuff);
     SignatureKey->val = sigKeyBuff;
 
-    char aBuff[2 * EFS_Ed25519 + 1];
-    A->len = 2 * EFS_Ed25519 + 1;
-    A->max = sizeof(aBuff);
-    A->val = aBuff;
+    // Correct initialization of A
+    A->val = new char[2 * EFS_Ed25519 + 1]; // Allocate memory directly to A->val
+    A->max = 2 * EFS_Ed25519 + 1;           // Set the maximum length
+    A->len = 0;                             // Initialize length to 0, it will be set properly in signatureKeyGeneration
+
+    // Copy data to A
+    // No need to copy from aBuff, as A->val is already allocated
+    A->len = 65;
+
+    // Do not delete A->val here; manage its lifecycle outside this function
 
     // Generate signatureKey and A
 
@@ -101,6 +107,10 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
     // Concatenate vehicle public key and random private key
     auto publicKey = randomKey.getPublicKey();
     OCT_copy(A, &publicKey);
+
+    // Debug Print
+    cout << "Public Key length: " << publicKey.len << ", max: " << publicKey.max << endl;
+    cout << "A length: " << A->len << ", max: " << A->max << endl;
 
     Ed25519::ECP Apoint;
     Ed25519::ECP_fromOctet(&Apoint, A);

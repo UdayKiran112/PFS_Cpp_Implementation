@@ -27,8 +27,8 @@ octet Key::getPrivateKey()
 }
 octet Key::getPublicKey()
 {
-    char *cpy=new char[2 * EFS_Ed25519 + 1];
-    octet copy={0, 2 * EFS_Ed25519 + 1, cpy};
+    char *cpy = new char[2 * EFS_Ed25519 + 1];
+    octet copy = {0, 2 * EFS_Ed25519 + 1, cpy};
     OCT_copy(&copy, &publicKey);
     return copy;
 }

@@ -39,17 +39,17 @@ int main()
 
     Message msg;
     char pub[2 * EFS_Ed25519 + 1];
-    octet B={0, sizeof(pub), pub};
+    octet B = {0, sizeof(pub), pub};
     string message = "Mugiwara";
     vehicle.signMessage(&RNG, message, &B, &msg);
-    
-    // verification by the receiver 
+
+    // verification by the receiver
     Vehicle receiverVehicle = Vehicle(&RNG, ta);
     octet vehicleSignKey = vehicle.getSignatureKey();
 
-    cout<<"Sender Vehicle Signature Key= ";
+    cout << "Sender Vehicle Signature Key= ";
     OCT_output(&vehicleSignKey);
-    cout<<endl;
+    cout << endl;
 
     octet vehiclePubKey = vehicle.getVehicleKey().getPublicKey();
     octet Ap = vehicle.getA();
