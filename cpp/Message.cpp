@@ -8,29 +8,28 @@ Message::Message()
 
 Message::~Message()
 {
-    // delete[] message.val;
-    // delete[] Timestamp.val;
-    // delete[] B.val;
-    // delete[] finalMsg.val;
+    delete[] message.val;
+    delete[] Timestamp.val;
+    delete[] B.val;
+    delete[] finalMsg.val;
 }
 
 void Message::setFullMessage(string message, chrono::system_clock::time_point Timestamp, core::octet *B)
 {
-
+    delete[] this->message.val;
+    delete[] this->Timestamp.val;
+    
     this->message.len = message.size();
     this->message.max = message.size();
     this->message.val = new char[message.size()];
     memcpy(this->message.val, message.c_str(), message.size());
 
-    char temp[4];
-    octet t = {4, 4, temp};
-    timestamp_to_octet(Timestamp, &t);
-    setTimestamp(t);
+    this->Timestamp.len = 4;
+    this->Timestamp.max = 4;
+    this->Timestamp.val = new char[4];
+    timestamp_to_octet(Timestamp, &this->Timestamp);
 
-    this->B.len = B->len;
-    this->B.max = B->max;
-    this->B.val = new char[B->len];
-    memcpy(this->B.val, B->val, B->len);
+    OCT_copy(B, &this->B);
 }
 
 core::octet Message::getMessage()

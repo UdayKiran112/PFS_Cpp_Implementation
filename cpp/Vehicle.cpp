@@ -134,9 +134,18 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     octet temp1, temp2;
     octet msgMessage = msg->getMessage();
     octet msgTimestamp = msg->getTimestamp();
+
+    temp1.len = msgMessage.len + msgTimestamp.len;
+    temp1.max = msgMessage.max + msgTimestamp.max + B->max;
+    temp1.val = (char *)malloc(temp1.max);
     Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp1);
 
     octet msgB = msg->getB();
+
+    temp2.len = temp1.len + msgB.len;
+    temp2.max = temp1.max;
+    temp2.val = (char *)malloc(temp2.max);
+
     Message::Concatenate_octet(&temp1, &msgB, &temp2);
 
     Message::Hash_Function(HASH_TYPE_Ed25519, &temp2, &hashMsg);

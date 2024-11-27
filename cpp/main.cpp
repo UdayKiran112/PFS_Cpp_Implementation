@@ -47,7 +47,7 @@ int main()
     Vehicle receiverVehicle = Vehicle(&RNG, ta);
     octet vehicleSignKey = vehicle.getSignatureKey();
 
-    cout<<"Vehicle Signature Key= ";
+    cout<<"Sender Vehicle Signature Key= ";
     OCT_output(&vehicleSignKey);
     cout<<endl;
 

@@ -62,7 +62,8 @@ void TA::validateRequest(csprng *RNG, octet *registrationId, octet *vehiclePubli
     }
     else
     {
-        cout << "Signature generated successfully" << endl;
+        cout << "Signature generated successfully" << endl
+             << endl;
     }
 }
 
