@@ -87,13 +87,24 @@ void Vehicle::setA(octet A)
     if (this->A.val != nullptr)
     {
         delete[] this->A.val;
+        this->A.val = nullptr;  // Add this line for safety
     }
 
     // Allocate new memory and copy the data
-    this->A.max = A.max;
-    this->A.len = A.len;
-    this->A.val = new char[A.max];
-    memcpy(this->A.val, A.val, A.len);
+    if (A.len > 0 && A.val != nullptr)  // Add null check
+    {
+        this->A.max = A.max;
+        this->A.len = A.len;
+        this->A.val = new char[A.max];
+        memcpy(this->A.val, A.val, A.len);
+    }
+    else
+    {
+        // Initialize to empty state if input is invalid
+        this->A.max = 0;
+        this->A.len = 0;
+        this->A.val = nullptr;
+    }
 }
 
 void Vehicle::setTA(TA ta)
