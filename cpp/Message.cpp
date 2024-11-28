@@ -178,28 +178,14 @@ void Message::add_octets(octet *data1, octet *data2, octet *result)
     result->len = MODBYTES_B256_56; // Set this to the correct length of the output (typically MODBYTES).
 }
 
-void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, octet *result)
-{
-    if (result == nullptr)
-    {
-        throw std::invalid_argument("Result octet cannot be null");
-    }
-
-    using namespace chrono;
-
+void Message::timestamp_to_octet(chrono::system_clock::time_point ts, octet* oct) {
     // Convert to milliseconds since epoch
-    auto timestamp_ms = duration_cast<milliseconds>(timeStamp.time_since_epoch()).count();
-
-    // Use uint64_t to store milliseconds to maintain precision
-    uint64_t ms_value = static_cast<uint64_t>(timestamp_ms);
-
-    // Allocate new memory
-    result->val = new char[sizeof(ms_value)];
-    result->max = sizeof(ms_value);
-
-    // Store the full 8 bytes
-    memcpy(result->val, &ms_value, sizeof(ms_value));
-    result->len = sizeof(ms_value);
+    int64_t timestamp_ms = 
+        chrono::duration_cast<chrono::milliseconds>(ts.time_since_epoch()).count();
+    
+    // Copy the full 8 bytes
+    memcpy(oct->val, &timestamp_ms, sizeof(timestamp_ms));
+    oct->len = sizeof(timestamp_ms);
 }
 
 void Message::multiply_octet(octet *data1, octet *data2, octet *result)

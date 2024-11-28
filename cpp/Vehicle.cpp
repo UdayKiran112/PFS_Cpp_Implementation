@@ -159,7 +159,7 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     octet msgMessage = msg->getMessage();
 
     // Create a temporary octet for timestamp
-    char timestamp_val[4]; // 4 bytes for uint32_t
+    char timestamp_val[8]; // Changed from 4 to 8 bytes to accommodate int64_t timestamp
     octet timestamp_oct = {sizeof(timestamp_val), sizeof(timestamp_val), timestamp_val};
 
     // Convert timestamp to octet using the Message class helper
@@ -210,7 +210,6 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     delete[] hashMsg.val;
     delete[] signedMessage.val;
     delete[] randKeyPublicKey.val;
-    delete[] timestamp_oct.val;
 
     return true;
 }
@@ -233,6 +232,10 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     // Get timestamp from message and convert to octet using the same method
     auto timestamp = msg.getTimestamp();
     Message::timestamp_to_octet(timestamp, &timestamp_oct);
+
+    cout << "Timestamp in octet in Validate_Message: ";
+    OCT_output(&timestamp_oct);
+    cout << endl;
 
     // Convert the octet back to time_point - Update this section
     int64_t received_timestamp_ms; // Change to 64-bit integer for milliseconds
@@ -353,7 +356,6 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     delete[] r1_val;
     delete[] temp_val;
     delete[] r2_val;
-    delete[] timestamp_oct.val;
 
     return true;
 }
