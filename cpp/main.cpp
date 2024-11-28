@@ -55,10 +55,11 @@ int main()
     octet Ap = vehicle.getA();
     receiverVehicle.Validate_Message(&generator, &vehicleSignKey, &vehiclePubKey, &Ap, msg);
 
-    // clean up
+    // Enhanced cleanup
     delete[] vehiclePubKey.val;
     delete[] msg.getMessage().val;
     delete[] msg.getB().val;
+    KILL_CSPRNG(&RNG);
 
     return 0;
 }
