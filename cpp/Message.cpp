@@ -140,10 +140,15 @@ void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 
 void Message::add_octets(octet *data1, octet *data2, octet *result)
 {
-    // Error checking
+    // Input validation
     if (!data1 || !data2 || !result)
     {
         throw std::invalid_argument("One or more octets are null");
+    }
+
+    if (!data1->val || !data2->val)
+    {
+        throw std::invalid_argument("Input octet values are null");
     }
 
     // Ensure lengths are correct before proceeding
@@ -152,37 +157,50 @@ void Message::add_octets(octet *data1, octet *data2, octet *result)
         throw std::length_error("Input octet lengths are invalid");
     }
 
-    // Allocate memory for the result octet if not already allocated
-    if (!result->val)
+    // Only delete if the memory was dynamically allocated
+    // Add a check to see if the memory needs to be allocated
+    if (result->val == nullptr || result->max < MODBYTES_B256_56)
     {
-        result->val = new char[MODBYTES_B256_56]; // Allocate memory for the result
-        result->max = MODBYTES_B256_56;           // Set maximum size
+        // Clean up existing memory if any
+        if (result->val != nullptr)
+        {
+            delete[] result->val;
+        }
+
+        try
+        {
+            result->val = new char[MODBYTES_B256_56];
+            result->max = MODBYTES_B256_56;
+        }
+        catch (std::bad_alloc &ba)
+        {
+            throw std::runtime_error("Memory allocation failed for result");
+        }
     }
 
     BIG curve_order, point1, point2, sum;
 
-    // Copy the curve order.
+    // Copy the curve order
     BIG_rcopy(curve_order, CURVE_Order);
 
-    // Convert the byte arrays from the octets into BIG integers.
-    BIG_fromBytes(point1, data1->val);
-    BIG_fromBytes(point2, data2->val);
+    // Convert octets to BIG integers
+    B256_56::BIG_fromBytes(point1, data1->val);
+    B256_56::BIG_fromBytes(point2, data2->val);
 
-    // Perform modular addition: sum = (point1 + point2) % curve_order.
+    // Perform modular addition
     BIG_modadd(sum, point1, point2, curve_order);
 
-    // Convert the resulting BIG back into a byte array.
+    // Convert back to bytes
     BIG_toBytes(result->val, sum);
-
-    // Update the length of the result octet.
-    result->len = MODBYTES_B256_56; // Set this to the correct length of the output (typically MODBYTES).
+    result->len = MODBYTES_B256_56;
 }
 
-void Message::timestamp_to_octet(chrono::system_clock::time_point ts, octet* oct) {
+void Message::timestamp_to_octet(chrono::system_clock::time_point ts, octet *oct)
+{
     // Convert to milliseconds since epoch
-    int64_t timestamp_ms = 
+    int64_t timestamp_ms =
         chrono::duration_cast<chrono::milliseconds>(ts.time_since_epoch()).count();
-    
+
     // Copy the full 8 bytes
     memcpy(oct->val, &timestamp_ms, sizeof(timestamp_ms));
     oct->len = sizeof(timestamp_ms);
