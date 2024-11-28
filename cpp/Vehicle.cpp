@@ -143,8 +143,11 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
 
     // Print timestamp
     std::time_t timeT = std::chrono::system_clock::to_time_t(ts);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(ts.time_since_epoch()).count() % 1000;
     std::tm localTm = *std::localtime(&timeT);
-    std::cout << "Timestamp in signMessage = " << std::put_time(&localTm, "%Y-%m-%d %H:%M:%S") << std::endl;
+    std::cout << "Timestamp in signMessage = "
+              << std::put_time(&localTm, "%Y-%m-%d %H:%M:%S")
+              << "." << std::setfill('0') << std::setw(3) << ms << std::endl;
     cout << endl;
 
     // Set the full message
@@ -154,16 +157,22 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
 
     octet temp1, temp2;
     octet msgMessage = msg->getMessage();
-    octet msgTimestamp = msg->getTimestamp();
+
+    // Create a temporary octet for timestamp
+    char timestamp_val[4]; // 4 bytes for uint32_t
+    octet timestamp_oct = {sizeof(timestamp_val), sizeof(timestamp_val), timestamp_val};
+
+    // Convert timestamp to octet using the Message class helper
+    Message::timestamp_to_octet(ts, &timestamp_oct); // Use the same conversion method as in Message class
 
     cout << "Timestamp in octet in signMessage: ";
-    OCT_output(&msgTimestamp);
+    OCT_output(&timestamp_oct);
     cout << endl;
 
-    temp1.len = msgMessage.len + msgTimestamp.len;
-    temp1.max = msgMessage.max + msgTimestamp.max + B->max;
+    temp1.len = msgMessage.len + timestamp_oct.len;
+    temp1.max = msgMessage.max + timestamp_oct.max + B->max;
     temp1.val = new char[temp1.max];
-    Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp1);
+    Message::Concatenate_octet(&msgMessage, &timestamp_oct, &temp1);
 
     // Allocate space for B
     char b_val[2 * EFS_Ed25519 + 1];
@@ -173,7 +182,6 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     temp2.len = temp1.len + msgB.len;
     temp2.max = temp1.max;
     temp2.val = new char[temp2.max];
-
     Message::Concatenate_octet(&temp1, &msgB, &temp2);
 
     Message::Hash_Function(HASH_TYPE_Ed25519, &temp2, &hashMsg);
@@ -202,6 +210,8 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
     delete[] hashMsg.val;
     delete[] signedMessage.val;
     delete[] randKeyPublicKey.val;
+    delete[] timestamp_oct.val;
+
     return true;
 }
 
@@ -216,31 +226,38 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
 {
     using namespace B256_56;
 
-    // Retrieve and convert timestamp
-    core::octet timestamp_oct = msg.getTimestamp();
+    // Create a temporary octet for timestamp
+    char timestamp_val[8]; // Change to 8 bytes to accommodate full timestamp
+    octet timestamp_oct = {sizeof(timestamp_val), sizeof(timestamp_val), timestamp_val};
 
-    cout << "Timestamp in octet in Validate_Message: ";
-    OCT_output(&timestamp_oct);
-    cout << endl;
+    // Get timestamp from message and convert to octet using the same method
+    auto timestamp = msg.getTimestamp();
+    Message::timestamp_to_octet(timestamp, &timestamp_oct);
 
-    // Convert the octet to time_point
-    uint32_t timestamp_s;
-    memcpy(&timestamp_s, timestamp_oct.val, sizeof(timestamp_s));
+    // Convert the octet back to time_point - Update this section
+    int64_t received_timestamp_ms; // Change to 64-bit integer for milliseconds
+    memcpy(&received_timestamp_ms, timestamp_oct.val, sizeof(received_timestamp_ms));
 
-    // Create time_point from seconds since epoch
-    chrono::system_clock::time_point receivedTimestamp =
-        chrono::system_clock::from_time_t(timestamp_s);
+    // Create time_point from milliseconds since epoch
+    chrono::system_clock::time_point receivedTimestamp = 
+        chrono::system_clock::time_point(chrono::milliseconds(received_timestamp_ms));
 
     auto now = chrono::system_clock::now();
 
     // Log the timestamps for debugging
     std::time_t receivedTimeT = std::chrono::system_clock::to_time_t(receivedTimestamp);
+    auto receivedMs = std::chrono::duration_cast<std::chrono::milliseconds>(receivedTimestamp.time_since_epoch()).count() % 1000;
     std::tm receivedLocalTm = *std::localtime(&receivedTimeT);
-    std::cout << "Received Timestamp = " << std::put_time(&receivedLocalTm, "%Y-%m-%d %H:%M:%S") << std::endl;
+    std::cout << "Received Timestamp = "
+              << std::put_time(&receivedLocalTm, "%Y-%m-%d %H:%M:%S")
+              << "." << std::setfill('0') << std::setw(3) << receivedMs << std::endl;
 
     std::time_t nowTimeT = std::chrono::system_clock::to_time_t(now);
+    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
     std::tm nowLocalTm = *std::localtime(&nowTimeT);
-    std::cout << "Current Timestamp = " << std::put_time(&nowLocalTm, "%Y-%m-%d %H:%M:%S") << std::endl;
+    std::cout << "Current Timestamp = "
+              << std::put_time(&nowLocalTm, "%Y-%m-%d %H:%M:%S")
+              << "." << std::setfill('0') << std::setw(3) << nowMs << std::endl;
 
     // Check for replay attack by comparing timestamps
     if (chrono::duration_cast<chrono::milliseconds>(now - receivedTimestamp).count() > T_replay)
@@ -284,12 +301,11 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     Message::Concatenate_octet(VehiclePublicKey, A, &r1); // r1 = PKi || A --> Octet concatenation
 
     octet msgMessage = msg.getMessage();
-    octet msgTimestamp = msg.getTimestamp();
 
     // Allocate new memory for temp
-    char *temp_val = new char[msgMessage.len + msgTimestamp.len];
-    octet temp = {0, (int)(msgMessage.len + msgTimestamp.len), temp_val};
-    Message::Concatenate_octet(&msgMessage, &msgTimestamp, &temp); // temp = M || T ||--> Octet concatenation
+    char *temp_val = new char[msgMessage.len + timestamp_oct.len];
+    octet temp = {0, (int)(msgMessage.len + timestamp_oct.len), temp_val};
+    Message::Concatenate_octet(&msgMessage, &timestamp_oct, &temp); // temp = M || T ||--> Octet concatenation
 
     // Allocate new memory for r2
     char *r2_val = new char[temp.len + msgB.len];
@@ -325,6 +341,11 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
         cout << "Message has been Compromised\n";
         return false;
     }
+    else
+    {
+        cout << endl;
+        cout << "Vehicle Validated the Message\n";
+    }
 
     // clean up
     delete[] Hash_A.val;
@@ -332,6 +353,7 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     delete[] r1_val;
     delete[] temp_val;
     delete[] r2_val;
+    delete[] timestamp_oct.val;
 
     return true;
 }

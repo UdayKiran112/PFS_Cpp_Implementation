@@ -58,7 +58,6 @@ int main()
     // clean up
     delete[] vehiclePubKey.val;
     delete[] msg.getMessage().val;
-    delete[] msg.getTimestamp().val;
     delete[] msg.getB().val;
 
     return 0;

@@ -15,33 +15,32 @@ class Message
 {
 private:
     core::octet message;
-    core::octet Timestamp;
+    std::chrono::system_clock::time_point timestamp;
     core::octet B; // Public Key Type
     // core::octet hashMsg; //64 bitss less than multiple of 512 bits
     core::octet finalMsg;
+    std::chrono::system_clock::time_point Timestamp;
 
 public:
     Message();
     ~Message();
-    void setFullMessage(string message, chrono::system_clock::time_point Timestamp, core::octet *B);
+    void setFullMessage(string message, std::chrono::system_clock::time_point timestamp, core::octet *B);
     core::octet getMessage();
-    core::octet getTimestamp();
+    std::chrono::system_clock::time_point getTimestamp();
     const core::octet &getB();
     // core::octet getHashMsg();
     core::octet getFinalMsg();
     void setMessage(core::octet message);
-    void setTimestamp(core::octet Timestamp);
+    void setTimestamp(std::chrono::system_clock::time_point timestamp);
     void setB(core::octet B);
     // void setHashMsg(core::octet hashMsg);
     void setFinalMsg(core::octet finalMsg);
 
     static void Concatenate_octet(octet *data1, octet *data2, octet *result);
     static void Hash_Function(int hlen, octet *input, octet *output);
-    static void timestamp_to_octet(chrono::system_clock::time_point timeStamp, octet *result);
     static void add_octets(octet *data1, octet *data2, octet *result);
     static void multiply_octet(octet *data1, octet *data2, octet *result);
-
-    static std::chrono::system_clock::time_point deserializeTimestamp(const core::octet &timestamp_oct);
+    static void timestamp_to_octet(std::chrono::system_clock::time_point timeStamp, octet *result);
 };
 
 #endif // MESSAGE_H

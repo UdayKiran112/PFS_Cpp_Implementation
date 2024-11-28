@@ -29,16 +29,12 @@ Message::~Message()
 
 void Message::setFullMessage(string message, chrono::system_clock::time_point Timestamp, core::octet *B)
 {
-
     this->message.len = message.size();
     this->message.max = message.size();
     this->message.val = new char[message.size()];
     memcpy(this->message.val, message.c_str(), message.size());
 
-    this->Timestamp.len = 4;
-    this->Timestamp.max = 4;
-    this->Timestamp.val = new char[4];
-    timestamp_to_octet(Timestamp, &this->Timestamp);
+    this->Timestamp = Timestamp;
 
     // Properly initialize B octet before copying
     if (B != nullptr && B->val != nullptr)
@@ -61,7 +57,7 @@ core::octet Message::getMessage()
     return message;
 }
 
-core::octet Message::getTimestamp()
+chrono::system_clock::time_point Message::getTimestamp()
 {
     return Timestamp;
 }
@@ -81,7 +77,7 @@ void Message::setMessage(core::octet message)
     this->message = message;
 }
 
-void Message::setTimestamp(core::octet Timestamp)
+void Message::setTimestamp(chrono::system_clock::time_point Timestamp)
 {
     this->Timestamp = Timestamp;
 }
@@ -118,20 +114,25 @@ void Message::Hash_Function(int hlen, octet *input, octet *output)
 
 void Message::Concatenate_octet(octet *data1, octet *data2, octet *result)
 {
-    int total_length = data1->len + data2->len;
-
-    // Check if result has enough space
-    if (result->max < total_length)
+    // Add input validation
+    if (!data1 || !data2 || !result || !data1->val || !data2->val)
     {
-        std::cerr << "Error: result octet does not have enough space to hold concatenated data." << std::endl;
-        return;
+        throw std::invalid_argument("Invalid input octets");
     }
 
-    // Copy data from the first octet into the output
-    memcpy(result->val, data1->val, data1->len);
+    int total_length = data1->len + data2->len;
 
-    // Copy data from the second octet into the output (after the first)
-    memcpy(result->val + data1->len, data2->val, data2->len);
+    // Allocate new memory for result if needed
+    if (!result->val || result->max < total_length)
+    {
+        delete[] result->val; // Delete old memory if it exists
+        result->val = new char[total_length];
+        result->max = total_length;
+    }
+
+    // Use memmove instead of memcpy to handle overlapping memory
+    memmove(result->val, data1->val, data1->len);
+    memmove(result->val + data1->len, data2->val, data2->len);
 
     // Set the length of the output
     result->len = total_length;
@@ -179,29 +180,26 @@ void Message::add_octets(octet *data1, octet *data2, octet *result)
 
 void Message::timestamp_to_octet(chrono::system_clock::time_point timeStamp, octet *result)
 {
+    if (result == nullptr)
+    {
+        throw std::invalid_argument("Result octet cannot be null");
+    }
+
     using namespace chrono;
 
-    auto time_since_epoch = timeStamp.time_since_epoch();
-    auto millis = duration_cast<milliseconds>(time_since_epoch).count();
+    // Convert to milliseconds since epoch
+    auto timestamp_ms = duration_cast<milliseconds>(timeStamp.time_since_epoch()).count();
 
-    // Truncate to 32 bits (4 bytes)
-    uint32_t truncated_millis = static_cast<uint32_t>(millis);
+    // Use uint64_t to store milliseconds to maintain precision
+    uint64_t ms_value = static_cast<uint64_t>(timestamp_ms);
 
-    if (result->val == nullptr)
-    {
-        throw std::runtime_error("Memory allocation failed");
-    }
+    // Allocate new memory
+    result->val = new char[sizeof(ms_value)];
+    result->max = sizeof(ms_value);
 
-    // Convert to big-endian if necessary
-    truncated_millis = __builtin_bswap32(truncated_millis);
-
-    unsigned char *ptr = reinterpret_cast<unsigned char *>(result->val);
-
-    // Store the 32-bit (4-byte) truncated value into the octet
-    for (int i = 0; i < 4; i++)
-    {
-        ptr[i] = (truncated_millis >> (8 * (3 - i))) & 0xFF;
-    }
+    // Store the full 8 bytes
+    memcpy(result->val, &ms_value, sizeof(ms_value));
+    result->len = sizeof(ms_value);
 }
 
 void Message::multiply_octet(octet *data1, octet *data2, octet *result)
@@ -224,27 +222,4 @@ void Message::multiply_octet(octet *data1, octet *data2, octet *result)
     result->max = 32;
     result->val = new char[32];
     BIG_toBytes(result->val, product);
-}
-
-std::chrono::system_clock::time_point Message::deserializeTimestamp(const core::octet &timestamp_oct)
-{
-    if (timestamp_oct.len < 4)
-    {
-        throw std::runtime_error("Timestamp octet length is insufficient.");
-    }
-
-    uint32_t millis32 = 0;
-    const unsigned char *ptr = reinterpret_cast<const unsigned char *>(timestamp_oct.val);
-
-    // Read the 32-bit (4-byte) value from the octet
-    for (int i = 0; i < 4; i++)
-    {
-        millis32 = (millis32 << 8) | ptr[i];
-    }
-
-    // Convert from big-endian if necessary
-    millis32 = __builtin_bswap32(millis32);
-
-    // Convert milliseconds since epoch to chrono::system_clock::time_point
-    return std::chrono::system_clock::time_point(std::chrono::milliseconds(millis32));
 }
