@@ -8,11 +8,22 @@ Vehicle::Vehicle(octet registrationId, Key vehicleKey, octet signatureKey, octet
     this->registrationId = registrationId;
     this->vehicleKey = vehicleKey;
     this->signatureKey = signatureKey;
-    this->A = A;
     this->ta = ta;
+
+    // Initialize A properly
+    this->A.max = A.max;
+    this->A.len = A.len;
+    this->A.val = new char[A.max];
+    memcpy(this->A.val, A.val, A.len);
 }
 
-Vehicle::Vehicle() {}
+Vehicle::Vehicle()
+{
+    // Initialize A to null
+    this->A.val = nullptr;
+    this->A.max = 0;
+    this->A.len = 0;
+}
 
 Vehicle::Vehicle(csprng *RNG, TA ta)
 {
@@ -22,7 +33,12 @@ Vehicle::Vehicle(csprng *RNG, TA ta)
 
 Vehicle::~Vehicle()
 {
-    delete[] A.val;
+    // Only delete if the memory was dynamically allocated
+    if (A.val != nullptr && A.max > 0)
+    {
+        delete[] A.val;
+        A.val = nullptr; // Set to nullptr after deletion
+    }
 }
 
 octet Vehicle::getRegistrationId()
@@ -67,7 +83,17 @@ void Vehicle::setSignatureKey(octet signatureKey)
 
 void Vehicle::setA(octet A)
 {
-    this->A = A;
+    // Clean up existing memory if any
+    if (this->A.val != nullptr)
+    {
+        delete[] this->A.val;
+    }
+
+    // Allocate new memory and copy the data
+    this->A.max = A.max;
+    this->A.len = A.len;
+    this->A.val = new char[A.max];
+    memcpy(this->A.val, A.val, A.len);
 }
 
 void Vehicle::setTA(TA ta)
@@ -102,6 +128,7 @@ void Vehicle::requestVerification(csprng *RNG)
     // clean up
     delete[] pub;
     delete[] pk_copy;
+    delete[] a_val;
     delete[] publicKey.val;
     delete[] virpubkey.val;
 }
