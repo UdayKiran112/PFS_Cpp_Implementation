@@ -242,7 +242,7 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     memcpy(&received_timestamp_ms, timestamp_oct.val, sizeof(received_timestamp_ms));
 
     // Create time_point from milliseconds since epoch
-    chrono::system_clock::time_point receivedTimestamp = 
+    chrono::system_clock::time_point receivedTimestamp =
         chrono::system_clock::time_point(chrono::milliseconds(received_timestamp_ms));
 
     auto now = chrono::system_clock::now();

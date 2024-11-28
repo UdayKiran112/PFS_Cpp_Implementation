@@ -108,10 +108,6 @@ static bool signatureKeyGeneration(csprng *RNG, octet *groupPrivateKey, octet *v
     auto publicKey = randomKey.getPublicKey();
     OCT_copy(A, &publicKey);
 
-    // Debug Print
-    cout << "Public Key length: " << publicKey.len << ", max: " << publicKey.max << endl;
-    cout << "A length: " << A->len << ", max: " << A->max << endl;
-
     Ed25519::ECP Apoint;
     Ed25519::ECP_fromOctet(&Apoint, A);
 

@@ -13,26 +13,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: 'recursive'
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
 
-    - name: Set up environment
-      run: |
-        sudo apt-get update
-        sudo apt-get upgrade
-        sudo apt-get install -y build-essential python3 python-is-python3
+      - name: Set up environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 python-is-python3 libgtest-dev
 
-    - name: Run config64.py
-      run: |
-        cd cpp/Lib
-        echo -e "1\n0" | python3 config64.py
+      - name: Run config64.py
+        run: |
+          cd cpp/Lib
+          echo -e "1\n0" | python config64.py
 
-    - name: Build project
-      run: |
-        cd cpp && make
+      - name: Build project
+        run: |
+          cd cpp && make
 
-    - name: Run application
-      run: |
-        cd cpp && ./bin/app
+      - name: Run application
+        run: |
+          cd cpp && ./bin/app
