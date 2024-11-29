@@ -21,17 +21,20 @@ jobs:
       - name: Set up environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3 python-is-python3 libgtest-dev
+          sudo apt-get install -y build-essential python3 python-is-python3 cmake libgtest-dev
+          sudo apt-get install -y libasan8  # Ensures AddressSanitizer compatibility on some systems
 
-      - name: Run config64.py
+      - name: Configure project
         run: |
           cd cpp/Lib
           echo -e "1\n0" | python config64.py
 
       - name: Build project
         run: |
-          cd cpp && make CXXFLAGS="-fsanitize=address -fno-omit-frame-pointer -g"
+          cd cpp
+          make CXXFLAGS="-std=c++17 -Wall -fsanitize=address -g -O0 -fno-omit-frame-pointer -I./Lib -I."
 
       - name: Run application
         run: |
-          cd cpp && ASAN_OPTIONS=detect_leaks=1 ./bin/app
+          cd cpp
+          ASAN_OPTIONS=detect_leaks=1 ./bin/app
