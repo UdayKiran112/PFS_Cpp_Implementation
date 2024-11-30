@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <fstream>
+#include <iomanip> // For std::setprecision
 #include "Message.h"
 #include "Vehicle.h"
 #include "Key.h"
@@ -10,6 +11,15 @@
 using namespace std;
 using namespace std::chrono;
 
+// ANSI escape codes for colored output
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+
 void measureHashingTime(Message &msg, const string &message)
 {
     octet hashMsg;
@@ -17,8 +27,8 @@ void measureHashingTime(Message &msg, const string &message)
     auto messageContent = msg.getMessage();
     msg.Hash_Function(HASH_TYPE_Ed25519, &messageContent, &hashMsg);
     auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start).count();
-    cout << "Hashing Time: " << duration << " milliseconds" << endl;
+    auto duration = duration_cast<microseconds>(end - start).count();
+    cout << CYAN << "Hashing Time: " << duration << " microseconds" << RESET << endl;
 
     delete[] hashMsg.val;
 }
@@ -28,8 +38,8 @@ void measureSigningTime(Vehicle &vehicle, csprng *RNG, const string &message, oc
     auto start = high_resolution_clock::now();
     vehicle.signMessage(RNG, message, B, msg);
     auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start).count();
-    cout << "Signing Time: " << duration << " milliseconds" << endl;
+    auto duration = duration_cast<microseconds>(end - start).count();
+    cout << GREEN << "Signing Time: " << duration << " microseconds" << RESET << endl;
 }
 
 void measureValidationTime(Vehicle &receiverVehicle, Ed25519::ECP *generator,
@@ -38,8 +48,8 @@ void measureValidationTime(Vehicle &receiverVehicle, Ed25519::ECP *generator,
     auto start = high_resolution_clock::now();
     receiverVehicle.Validate_Message(generator, vehicleSignKey, vehiclePubKey, Ap, msg);
     auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start).count();
-    cout << "Validation Time: " << duration << " milliseconds" << endl;
+    auto duration = duration_cast<microseconds>(end - start).count();
+    cout << YELLOW << "Validation Time: " << duration << " microseconds" << RESET << endl;
 }
 
 void measureScalarMultiplicationTime(Ed25519::ECP *point, B256_56::BIG scalar)
@@ -47,8 +57,8 @@ void measureScalarMultiplicationTime(Ed25519::ECP *point, B256_56::BIG scalar)
     auto start = high_resolution_clock::now();
     Ed25519::ECP_mul(point, scalar);
     auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start).count();
-    cout << "Scalar Multiplication Time: " << duration << " milliseconds" << endl;
+    auto duration = duration_cast<microseconds>(end - start).count();
+    cout << MAGENTA << "Scalar Multiplication Time: " << duration << " microseconds" << RESET << endl;
 }
 
 void measurePointAdditionTime(Ed25519::ECP *point1, Ed25519::ECP *point2)
@@ -56,8 +66,8 @@ void measurePointAdditionTime(Ed25519::ECP *point1, Ed25519::ECP *point2)
     auto start = high_resolution_clock::now();
     Ed25519::ECP_add(point1, point2);
     auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start).count();
-    cout << "Point Addition Time: " << duration << " milliseconds" << endl;
+    auto duration = duration_cast<microseconds>(end - start).count();
+    cout << BLUE << "Point Addition Time: " << duration << " microseconds" << RESET << endl;
 }
 
 int main()
@@ -106,6 +116,10 @@ int main()
     double totalPointAdditionTime = 0.0;
 
     for (int i = 0; i < iterations; ++i) {
+        cout << "----------------------------------------" << endl;
+        cout << "Iteration " << i + 1 << " of " << iterations << endl;
+        cout << "----------------------------------------" << endl;
+
         auto start = high_resolution_clock::now();
         measureHashingTime(msg, message);
         auto end = high_resolution_clock::now();
@@ -143,6 +157,8 @@ int main()
         delete[] vehiclePubKey.val;
         delete[] msg.getMessage().val;
         delete[] msg.getB().val;
+
+        cout << endl; // Add spacing between iterations
     }
 
     cout.rdbuf(originalCoutBuffer);
