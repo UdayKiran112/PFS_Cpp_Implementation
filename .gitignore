@@ -59,3 +59,5 @@ cpp/obj/Lib/rom_field_F25519.o
 .vscode/settings.json
 code-analyzer-report/index.html
 .vscode/launch.json
+cpp/obj/timing.o
+cpp/bin/timing

@@ -9,12 +9,15 @@ BIN_DIR = bin
 LIB_DIR = Lib
 
 # Project Source Files
-SRCS = main.cpp Key.cpp TA.cpp Vehicle.cpp Message.cpp
-OBJS = $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
+MAIN_SRCS = main.cpp Key.cpp TA.cpp Vehicle.cpp Message.cpp
+PERF_SRCS = timing.cpp Key.cpp TA.cpp Vehicle.cpp Message.cpp
+MAIN_OBJS = $(MAIN_SRCS:%.cpp=$(OBJ_DIR)/%.o)
+PERF_OBJS = $(PERF_SRCS:%.cpp=$(OBJ_DIR)/%.o)
 LIBS = $(LIB_DIR)/core.a
 
-# Executable
-TARGET = $(BIN_DIR)/app
+# Executables
+MAIN_TARGET = $(BIN_DIR)/app
+PERF_TARGET = $(BIN_DIR)/timing
 
 # Detect Operating System
 ifeq ($(OS),Windows_NT)
@@ -37,11 +40,14 @@ else
 endif
 
 # Rules
-all: $(OBJ_DIR) $(BIN_DIR) $(TARGET)
+all: $(OBJ_DIR) $(BIN_DIR) $(MAIN_TARGET) $(PERF_TARGET)
 
-# Link the object files and core.a to create the executable
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+# Separate linking rules for each executable
+$(MAIN_TARGET): $(MAIN_OBJS)
+	$(CXX) $(CXXFLAGS) -o $(MAIN_TARGET) $(MAIN_OBJS) $(LIBS)
+
+$(PERF_TARGET): $(PERF_OBJS)
+	$(CXX) $(CXXFLAGS) -o $(PERF_TARGET) $(PERF_OBJS) $(LIBS)
 
 # Compile the source files into object files and place them in the OBJ_DIR
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
@@ -57,6 +63,6 @@ $(BIN_DIR):
 
 # Clean up object files and the executable
 clean:
-	$(DEL_CMD) $(OBJ_DIR)$(SLASH)*.o $(TARGET)
+	$(DEL_CMD) $(OBJ_DIR)$(SLASH)*.o $(MAIN_TARGET) $(PERF_TARGET)
 
 .PHONY: all clean
