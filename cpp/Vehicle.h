@@ -25,7 +25,7 @@ public:
     Vehicle();
     ~Vehicle();
     octet getRegistrationId();
-    Key getVehicleKey();
+    Key getVehicleKey() const;
     octet getSignatureKey();
     octet getA();
     TA getTA();

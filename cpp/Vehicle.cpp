@@ -46,7 +46,7 @@ octet Vehicle::getRegistrationId()
     return registrationId;
 }
 
-Key Vehicle::getVehicleKey()
+Key Vehicle::getVehicleKey() const
 {
     return vehicleKey;
 }
