@@ -34,7 +34,7 @@ void Message::setFullMessage(string message, chrono::system_clock::time_point Ti
     this->message.val = new char[message.size()];
     memcpy(this->message.val, message.c_str(), message.size());
 
-    this->Timestamp = Timestamp;
+    this->timestamp = Timestamp;
 
     // Properly initialize B octet before copying
     if (B != nullptr && B->val != nullptr)
@@ -59,7 +59,7 @@ core::octet Message::getMessage()
 
 chrono::system_clock::time_point Message::getTimestamp()
 {
-    return Timestamp;
+    return timestamp;
 }
 
 const core::octet &Message::getB()
@@ -79,7 +79,7 @@ void Message::setMessage(core::octet message)
 
 void Message::setTimestamp(chrono::system_clock::time_point Timestamp)
 {
-    this->Timestamp = Timestamp;
+    this->timestamp = Timestamp;
 }
 
 void Message::setB(core::octet B)

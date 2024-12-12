@@ -13,19 +13,43 @@ vector<Vehicle> initializeVehicles(int numVehicles, csprng *RNG, TA &ta)
     vector<Vehicle> vehicles;
     vehicles.reserve(numVehicles); // Pre-allocate space to avoid reallocations
 
-    for (int i = 0; i < numVehicles; ++i)
-    {
-        cout << "\n================ Vehicle " << i + 1 << " Operations ================\n";
-        vehicles.emplace_back(RNG, ta);     // Construct Vehicle directly in the vector
-        Vehicle &vehicle = vehicles.back(); // Get reference to the newly created vehicle
+    try {
+        for (int i = 0; i < numVehicles; ++i)
+        {
+            cout << "\n================ Vehicle " << i + 1 << " Operations ================\n";
+            
+            // Create vehicle with RNG and TA
+            Vehicle vehicle(RNG, ta);     
 
-        cout << "Vehicle created successfully\n";
-        octet reg = {0, 4, (char *)"1234"}; // Example registration ID
-        vehicle.setRegistrationId(reg);
-        cout << "Registration ID for Vehicle " << i + 1 << " set successfully\n";
-        vehicle.requestVerification(RNG);
-        cout << "Verification request for Vehicle " << i + 1 << " sent successfully\n";
+            cout << "Vehicle created successfully\n";
+            
+            // Use a stack-allocated registration ID to avoid dynamic memory issues
+            octet reg = {0, 4, (char *)"1234"}; 
+            vehicle.setRegistrationId(reg);
+            
+            cout << "Registration ID for Vehicle " << i + 1 << " set successfully\n";
+            
+            try {
+                // Wrap requestVerification in a separate try-catch to isolate potential errors
+                vehicle.requestVerification(RNG);
+                vehicles.push_back(std::move(vehicle)); // Use move semantics
+            }
+            catch (const std::exception& verifyError) {
+                cerr << "Error in vehicle verification: " << verifyError.what() << endl;
+                // Continue to next vehicle instead of aborting entire process
+                continue;
+            }
+        }
     }
+    catch (const std::exception& e) {
+        cerr << "Error in vehicle initialization: " << e.what() << endl;
+        vehicles.clear(); // Ensure cleanup
+    }
+
+    if (vehicles.empty()) {
+        throw std::runtime_error("No vehicles could be initialized");
+    }
+
     return vehicles;
 }
 
@@ -82,124 +106,113 @@ int main()
     cout << "Enter the number of vehicles: ";
     cin >> numVehicles;
 
-    // Initialize vehicles
-    vector<Vehicle> vehicles = initializeVehicles(numVehicles, &RNG, ta);
+    try {
+        // Initialize vehicles
+        vector<Vehicle> vehicles = initializeVehicles(numVehicles, &RNG, ta);
 
-    // Generate signatures using signMessage directly
-    vector<octet> signatures;
-    vector<Message> messages; // Store Message objects
-    vector<string> vehicleMessages; // Store individual messages for each vehicle
-    messages.reserve(numVehicles);
-    signatures.reserve(numVehicles);
-    vehicleMessages.reserve(numVehicles);
+        // Check if vehicles were successfully created
+        if (vehicles.empty()) {
+            cerr << "Failed to create vehicles" << endl;
+            return 1;
+        }
 
-    for (int i = 0; i < numVehicles; ++i)
-    {
-        cout << "\n================ Vehicle " << i + 1 << " Signature Generation ================\n";
+        // Generate signatures using signMessage directly
+        vector<octet> signatures;
+        vector<Message> messages;       // Store Message objects
+        vector<string> vehicleMessages; // Store individual messages for each vehicle
+        messages.reserve(numVehicles);
+        signatures.reserve(numVehicles);
+        vehicleMessages.reserve(numVehicles);
 
-        // Initialize B
-        char b_val[2 * EFS_Ed25519 + 1];
-        octet B = {0, sizeof(b_val), b_val};
-
-        // Create unique message for each vehicle (example)
-        string vehicleMessage = "Message_from_Vehicle_" + to_string(i + 1);
-        vehicleMessages.push_back(vehicleMessage);
-
-        // Create Message object
-        Message msg;
-
-        // Sign the message
-        octet signature; // Declare the signature variable
-        if (vehicles[i].signMessage(&RNG, vehicleMessage, &B, &msg, &signature))
+        for (int i = 0; i < numVehicles; ++i)
         {
-            // Get the final message and create a deep copy
-            const octet &finalMsg = msg.getFinalMsg();
-            char* newVal = new char[finalMsg.len];
-            memcpy(newVal, finalMsg.val, finalMsg.len);
-            
-            // Create new octet with copied data
-            octet signatureCopy = {0, finalMsg.len, newVal};
-            signatures.push_back(signatureCopy);
-            
-            cout << "Signature generated successfully for Vehicle " << i + 1 << "\n";
+            cout << "\n================ Vehicle " << i + 1 << " Signature Generation ================\n";
+
+            // Initialize B
+            char b_val[2 * EFS_Ed25519 + 1];
+            octet B = {0, sizeof(b_val), b_val};
+
+            // Create unique message for each vehicle (example)
+            string vehicleMessage = "Message_from_Vehicle_" + to_string(i + 1);
+            vehicleMessages.push_back(vehicleMessage);
+
+            // Create Message object
+            Message msg;
+
+            // Sign the message
+            if (vehicles[i].signMessage(&RNG, vehicleMessage, &B, &msg))
+            {
+                // Directly get the final message (signature) from the Message object
+                const octet &finalMsg = msg.getFinalMsg();
+
+                // Copy the signature data into a new array
+                char sigVal[finalMsg.len];
+                memcpy(sigVal, finalMsg.val, finalMsg.len);
+
+                // Create new octet with copied data
+                octet signatureCopy = {finalMsg.len, finalMsg.len, sigVal};
+                signatures.push_back(signatureCopy);
+
+                // Print the signature for verification
+                cout << "Signature for Vehicle " << i + 1 << ": ";
+                OCT_output(&signatureCopy);
+                cout << endl;
+            }
+            else
+            {
+                cout << "Failed to generate signature for Vehicle " << i + 1 << "\n";
+            }
+        }
+
+        // Aggregate signatures
+        octet aggregateSignature = aggregateSignatures(signatures);
+
+        // Prepare public keys for verification
+        vector<octet> publicKeys;
+        for (const auto &vehicle : vehicles)
+        {
+            octet pubKey = vehicle.getVehicleKey().getPublicKey();
+            publicKeys.push_back(pubKey);
+        }
+
+        // Verify aggregate signature
+        bool isValid = verifyAggregateSignature(aggregateSignature, publicKeys, vehicleMessages);
+        if (isValid)
+        {
+            cout << "Aggregate signature is valid." << endl;
         }
         else
         {
-            cout << "Failed to generate signature for Vehicle " << i + 1 << "\n";
+            cout << "Aggregate signature is invalid." << endl;
         }
-    }
 
-    // Aggregate signatures
-    octet aggregateSignature = aggregateSignatures(signatures);
-
-    // Prepare public keys for verification
-    vector<octet> publicKeys;
-    for (const auto &vehicle : vehicles)
-    {
-        octet pubKey = vehicle.getVehicleKey().getPublicKey();
-        publicKeys.push_back(pubKey);
-    }
-
-    // Verify aggregate signature
-    bool isValid = verifyAggregateSignature(aggregateSignature, publicKeys, vehicleMessages);
-    if (isValid)
-    {
-        cout << "Aggregate signature is valid." << endl;
-    }
-    else
-    {
-        cout << "Aggregate signature is invalid." << endl;
-    }
-
-    // Verification by the receiver
-    Vehicle receiverVehicle(&RNG, ta);
-    octet vehicleSignKey = vehicles[0].getSignatureKey();
-
-    cout << "Sender Vehicle Signature Key= ";
-    OCT_output(&vehicleSignKey);
-    cout << endl;
-
-    octet vehiclePubKey = vehicles[0].getVehicleKey().getPublicKey();
-    octet Ap = vehicles[0].getA();
-    Message verificationMsg;
-    octet signature; // Declare the signature variable
-    vehicles[0].signMessage(&RNG, vehicleMessages[0], &publicKeys[0], &verificationMsg, &signature);
-
-    receiverVehicle.Validate_Message(&generator, &vehicleSignKey, &vehiclePubKey, &Ap, verificationMsg);
-
-    // Cleanup signatures vector
-    for (auto &sig : signatures) {
-        if (sig.val != nullptr) {
-            delete[] sig.val;
-            sig.val = nullptr;
-        }
-    }
-    signatures.clear();
-
-    // Cleanup
-    // Clean up public keys
-    for (auto &key : publicKeys)
-    {
-        if (key.val != nullptr)
+        // Cleanup signatures vector
+        for (auto &sig : signatures)
         {
-            delete[] key.val;
-            key.val = nullptr; // Set to nullptr to avoid double-free
+            if (sig.val != nullptr)
+            {
+                delete[] sig.val;
+                sig.val = nullptr;
+            }
+        }
+        signatures.clear();
+
+        // Additional cleanup for other dynamically allocated resources
+        for (auto &key : publicKeys)
+        {
+            if (key.val != nullptr)
+            {
+                delete[] key.val;
+                key.val = nullptr;
+            }
         }
     }
-
-    // Clean up remaining octets
-    if (vehiclePubKey.val != nullptr)
-    {
-        delete[] vehiclePubKey.val;
-        vehiclePubKey.val = nullptr; // Set to nullptr to avoid double-free
+    catch (const std::exception& e) {
+        cerr << "Unhandled exception: " << e.what() << endl;
+        return 1;
     }
-    if (aggregateSignature.val != nullptr)
-    {
-        delete[] aggregateSignature.val;
-        aggregateSignature.val = nullptr; // Set to nullptr to avoid double-free
-    }
-
+    
+    // Ensure cleanup of RNG
     KILL_CSPRNG(&RNG);
-
     return 0;
 }

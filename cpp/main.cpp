@@ -53,7 +53,7 @@ int main()
 
     octet vehiclePubKey = vehicle.getVehicleKey().getPublicKey();
     octet Ap = vehicle.getA();
-    receiverVehicle.Validate_Message(&generator, &vehicleSignKey, &vehiclePubKey, &Ap, msg);
+    receiverVehicle.Validate_Message(&generator, &vehicleSignKey, &vehiclePubKey, &Ap, &msg);
 
     // Enhanced cleanup
     delete[] vehiclePubKey.val;

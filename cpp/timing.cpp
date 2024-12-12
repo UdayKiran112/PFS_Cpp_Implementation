@@ -46,7 +46,7 @@ void measureValidationTime(Vehicle &receiverVehicle, Ed25519::ECP *generator,
                            octet *vehicleSignKey, octet *vehiclePubKey, octet *Ap, Message &msg)
 {
     auto start = high_resolution_clock::now();
-    receiverVehicle.Validate_Message(generator, vehicleSignKey, vehiclePubKey, Ap, msg);
+    receiverVehicle.Validate_Message(generator, vehicleSignKey, vehiclePubKey, Ap, &msg);
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(end - start).count();
     cout << YELLOW << "Validation Time: " << duration << " microseconds" << RESET << endl;

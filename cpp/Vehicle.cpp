@@ -259,7 +259,7 @@ bool Vehicle::signMessage(csprng *RNG, string message, octet *B, Message *msg)
 
 #define T_replay 1000
 
-bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signatureKey, core::octet *VehiclePublicKey, core::octet *A, Message msg)
+bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signatureKey, core::octet *VehiclePublicKey, core::octet *A, Message *msg)
 {
     using namespace B256_56;
 
@@ -268,7 +268,7 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     octet timestamp_oct = {sizeof(timestamp_val), sizeof(timestamp_val), timestamp_val};
 
     // Get timestamp from message and convert to octet using the same method
-    auto timestamp = msg.getTimestamp();
+    auto timestamp = msg->getTimestamp();
     Message::timestamp_to_octet(timestamp, &timestamp_oct);
 
     cout << "Timestamp in octet in Validate_Message: ";
@@ -312,7 +312,7 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     // Get B from message first
     char b_val[2 * EFS_Ed25519 + 1];        // Allocate space for B value
     octet msgB = {0, sizeof(b_val), b_val}; // Initialize octet properly
-    msgB = msg.getB();                      // Get B value from message
+    msgB = msg->getB();                      // Get B value from message
 
     // Add null checks before using ECP_fromOctet
     if (!signatureKey || !VehiclePublicKey || !A || !msgB.val)
@@ -328,7 +328,7 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     // Compute LHS = σ(M) * P
 
     BIG signedMessageHash;
-    BIG_fromBytes(signedMessageHash, msg.getFinalMsg().val);
+    BIG_fromBytes(signedMessageHash, msg->getFinalMsg().val);
     ECP_mul(&P, signedMessageHash); // P = σ(M) * P
     ECP_copy(&LHS, &P);             // LHS =  P
 
@@ -341,7 +341,7 @@ bool Vehicle::Validate_Message(Ed25519::ECP *GeneratorPoint, core::octet *signat
     octet r1 = {0, VehiclePublicKey->len + A->len, r1_val};
     Message::Concatenate_octet(VehiclePublicKey, A, &r1); // r1 = PKi || A --> Octet concatenation
 
-    octet msgMessage = msg.getMessage();
+    octet msgMessage = msg->getMessage();
 
     // Allocate new memory for temp
     char *temp_val = new char[msgMessage.len + timestamp_oct.len];
